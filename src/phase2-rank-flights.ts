@@ -239,7 +239,7 @@ async function main() {
   const prompt =
     'Find me a round-trip flight from Austin (AUS) to New York (JFK), ' +
     'departing 2026-09-14 and returning 2026-09-18, for 2 adults in economy. ' +
-    'My constraints: budget 800 USD total, direct flights only (0 stops), ' +
+    'My constraints: budget 1200 USD total, direct flights only (0 stops), ' +
     'max total duration 12 hours (720 minutes), and I prefer Delta (DL). ' +
     'Search, then rank against those constraints, then give me a preferred ' +
     'pick and secondary options with your reasoning.';

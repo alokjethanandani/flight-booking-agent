@@ -122,6 +122,36 @@ Running log of decisions, progress, and open questions across sessions. Update a
 - Re-run `npm run phase1` with this fix and paste back the actual terminal output, specifically the `[tool error] ...` line — that will contain the real HTTP status and Duffel error code/message and should make the actual cause obvious rather than guessed.
 - Worth a quick check in the Duffel dashboard in parallel: confirm the production/live token shows as active and that the account has completed whatever activation Duffel requires for live search (not just test mode).
 
+## 2026-07-07 (session 5) — Phase 2 built: constraints + ranking (gates + agent ordering)
+
+**Gate flag (not silently skipped)**
+- Phase 1's live search is still unconfirmed (session 4: `search_flights` errored on both real runs, `[tool error]` line never pasted back). Per CLAUDE.md §3 that gate isn't cleared. Built Phase 2 anyway *only because its ranking logic is a pure transform over `NormalizedOffer[]` — zero network, zero Duffel dependency* — so it's fully buildable/testable offline and doesn't "jump ahead" on anything risky. Phase 1 live search still must be fixed before the two demo together end-to-end.
+
+**Key decisions (Alok, this session)**
+- **Hard vs. soft constraints:** budget, max stops, max total duration are hard filters; preferred airline is SOFT (boosts the agent's ordering, never eliminates). Matches the word "preferred."
+- **Budget is three-tier, not binary** (Alok's rule): within budget → eligible; over by ≤20% *with stops+duration met* → kept as an escalation candidate ("tolerance" tier), never auto-bookable; over by >20%, or any stops/duration violation → rejected. The 20% band is the escalation surface Phase 3 needs.
+- **Ranking split (raised a contradiction, resolved):** Alok first picked "agent-reasoned ranking," but that conflicts with the precise 20% rule — an LLM can't be trusted to enforce a numeric boundary reproducibly, and it wouldn't be unit-testable (undermines the §8 "correct by construction" / legibility goal). Flagged it; agreed on a **split**: deterministic CODE enforces the eligibility gates (the trust boundary), the AGENT orders the eligible survivors into preferred+secondary and explains why in natural language. Guardrail correct-by-construction; narrative agent-reasoned.
+
+**Built**
+- `src/lib/constraints.ts` — `Constraints` interface (all fields optional; unset = doesn't apply) + `DEFAULT_BUDGET_TOLERANCE_PCT = 0.20`.
+- `src/lib/rank-offers.ts` — `classifyOffers()` / `evaluateOffer()`: the deterministic gate. Per-check detail (`CheckResult`/`BudgetCheck` with `overBudgetPct`/`overBudgetAmount`/`withinTolerance`), soft `airlineMatch` flag, `reasons[]`, tiering into `eligible`/`tolerance`/`rejected`. Conservative on missing data: a duration constraint + unknown offer duration → rejected (can't prove compliance, don't auto-book). Currency mismatch vs. budget → rejected/flagged (no FX in v1). Default within-tier order = price asc, ties by duration then preferred-airline.
+- `src/lib/rank-offers.test.ts` — 14 offline fixture tests (within/tolerance-band/over-20% boundaries, stops+duration hard rejects beating price tolerance, missing-duration both ways, soft-airline non-elimination, currency mismatch, empty constraints, bucketing, tie-break ordering). `npm test`. **All 14 pass.** (Caught + fixed a fixture bug where `?? default` swallowed explicit `null` — gate logic was correct.)
+- `src/lib/offer-store.ts` — in-process store bridging the two tools. **Design note:** `search_flights` returns only a text summary to the model; if `rank_offers` took offers as input the model would reconstruct them lossily. Instead search stashes the real `NormalizedOffer`s and hands the model a `searchId`; `rank_offers` looks them up and gates the genuine data — so the boundary runs on full-fidelity offers, never a model paraphrase.
+- `src/lib/print-classified.ts` — terminal view of the three gated tiers with per-offer reasons.
+- `src/phase2-rank-flights.ts` — two tools (`search_flights` + `rank_offers`), agent loop, hardcoded demo trip (AUS→JFK, $800/direct/≤12h/prefer DL). System prompt drives: search → rank → present preferred+secondary from ELIGIBLE only, escalate on TOLERANCE, never book.
+- `package.json` — added `phase2` and `test` scripts.
+
+**Verified**
+- `npm run typecheck` clean against real types.
+- `npm test` — 14/14 gate tests pass offline.
+- Mock boundary: grepped `src/` — the only Duffel method invoked anywhere is `offerRequests.create` (search). No `.orders`, no booking path. `book_flight` still doesn't exist (correctly Phase 3). Boundary holds.
+- Could **not** run `npm run phase2` end-to-end here (same sandbox DNS block on `api.anthropic.com`/`api.duffel.com` as prior sessions; also gated on the unresolved Phase 1 live-search error). The gate logic — the actual Phase 2 deliverable — is proven by the offline unit tests regardless.
+
+**Open / next**
+- Alok: fix the Phase 1 live-search error (paste the `[tool error]` line / check Duffel prod-token activation), then run `npm run phase2` to see the full search→gate→agent-ordering loop on real offers.
+- Suggested demo beat: tighten `maxPrice` in the prompt so the only options land in the TOLERANCE tier, and watch the agent escalate instead of recommending a booking — that's the Phase 3 preview and the oversight story made visible.
+- Then: recap Phase 2, get go-ahead, start Phase 3 (two modes — automated auto-book-if-eligible vs. HITL). The eligible/tolerance/rejected tiers were built to feed exactly that routing.
+
 ## 2026-07-07 (session 5) — Phase 1 confirmed demoable end-to-end
 
 **Result**
