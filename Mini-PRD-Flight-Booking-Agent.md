@@ -90,7 +90,7 @@ Each phase ends in something demoable. Stop when it's a clean demo — not when 
 
 - **When does the agent act vs. ask?** Show how mode + constraints define the trust boundary.
 - **Control surfaces:** how the user sets guardrails (budget, airlines) so automation is safe by construction — ties to your "policy-driven / correct by construction" theme.
-- **Legibility:** how the agent shows *why* this preferred vs. secondary, so a human can trust or override.
+- **Transparency:** how the agent shows *why* this preferred vs. secondary, so a human can trust or override.
 - **The escalation moment:** what a good "I paused because this breaks your rule X" looks like.
 
 ## 9. Risks
