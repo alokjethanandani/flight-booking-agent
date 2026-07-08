@@ -1,0 +1,26 @@
+{
+  "name": "flight-booking-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Consumer flight-booking agent POC — Claude Agent SDK + Duffel (search only, booking mocked). See Mini-PRD-Flight-Booking-Agent.md.",
+  "type": "module",
+  "scripts": {
+    "phase0": "tsx src/phase0-hello-world.ts",
+    "phase1": "tsx src/phase1-search-flights.ts",
+    "phase2": "tsx src/phase2-rank-flights.ts",
+    "test": "tsx src/lib/rank-offers.test.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.201",
+    "@duffel/api": "^4.28.0",
+    "dotenv": "^16.4.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
