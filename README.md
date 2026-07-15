@@ -29,29 +29,34 @@ This is being built in phases, each one demoable before moving to the next. Here
 | 0 — Setup | Claude Agent SDK wired up, one dummy tool proving the loop works | ✅ Done |
 | 1 — Real search | `search_flights` against Duffel's live API, normalized + price-ranked in the terminal | ✅ Done |
 | 2 — Constraints + ranking | Deterministic budget/stops/duration gating, soft airline preference, preferred vs. secondary ordering | ✅ Done |
-| 3 — Two modes | Automated (auto-book if in-constraint, else escalate) vs. HITL (always present + wait) — the design centerpiece | 🚧 Planned |
+| 3 — Two modes | Automated (auto-book if in-constraint, else escalate) vs. HITL (always present + wait) — the design centerpiece | ✅ Done |
 | 4 — Thin UI | Chat + result cards + mode/constraint settings (v0/Lovable) | 🚧 Planned |
 | 5 — Demo + writeup | Screen-recorded walkthrough of both modes | 🚧 Planned |
 
 Full detail on each phase — including dead ends, bugs found, and decisions reversed along the way — is in the running [`BUILD-LOG.md`](BUILD-LOG.md). The original design doc is [`Mini-PRD-Flight-Booking-Agent.md`](Mini-PRD-Flight-Booking-Agent.md).
 
-## How it works today (Phases 0–2)
+## How it works today (Phases 0–3)
 
 Right now this runs as a terminal script, not a UI:
 
-1. A hardcoded trip request (origin, destination, dates, passengers, cabin class) is sent to `search_flights`, which calls Duffel's live production API and returns real, normalized offers.
+1. A trip request (origin, destination, dates, passengers, cabin class, and constraints) is sent to `search_flights`, which calls Duffel's live production API and returns real, normalized offers.
 2. `rank_offers` runs those offers through a **deterministic gate** — not the LLM — that classifies each offer as:
    - **Eligible** — meets budget, max stops, and max duration.
    - **Tolerance** — over budget by up to 20% but otherwise compliant; a candidate for escalation, never auto-bookable.
    - **Rejected** — over budget by more than 20%, or fails stops/duration.
    - Preferred airline is a *soft* signal — it reorders eligible results, it never disqualifies one.
 3. The **agent** takes the eligible survivors and reasons about ordering them into a preferred pick + secondaries, explaining why in plain language.
+4. When the agent calls `book_flight`, an **oversight gate** — the SDK's `canUseTool` permission callback — decides whether that booking is allowed to happen at all, *before* it executes:
+   - **Automated mode:** an eligible pick auto-books with no human involved; a tolerance-tier pick pauses and asks; a rejected/unknown offer is denied outright.
+   - **HITL mode:** every booking pauses for explicit human approval — approve, decline, or pick a different option from the list — regardless of tier (except hard-rejected offers, which are never presented as bookable).
+   - `book_flight` itself is **mocked**: it fabricates a confirmation (fake PNR) and never calls Duffel's real order endpoint. See [Guardrails](#guardrails--what-this-is-not).
+   - Every decision — mode, tier, outcome, and the plain-language reason — is written to a structured decision log, so the auto-vs-ask boundary is visible and explainable, not a black box.
 
-The split matters: the pass/fail gate is code (deterministic, unit-tested, auditable), and only the narrative ordering on top of it is left to the model. An LLM shouldn't be trusted to enforce a precise numeric boundary reproducibly — that's a guardrail, not a suggestion.
+The split matters: the pass/fail gate and the booking-approval gate are both code (deterministic, unit-tested, auditable). The model only orders eligible offers into a narrative preferred/secondary pick and explains its reasoning — it never gets to decide whether a booking is allowed to happen. An LLM shouldn't be trusted to enforce a precise numeric boundary reproducibly — that's a guardrail, not a suggestion.
 
 ## Guardrails — what this is not
 
-- **`book_flight` is always mocked.** No code path calls Duffel's paid `order` endpoint — ever, in any mode. It returns a fake confirmation record. This is the one property of the project that isn't allowed to slip.
+- **`book_flight` is always mocked.** No code path calls Duffel's paid `order` endpoint — ever, in any mode. It returns a fake confirmation record. This is the one property of the project that isn't allowed to slip — it's enforced both behaviorally (the mock function itself) and statically (a test that scans the booking code's actual source for any Duffel order reference).
 - **No real payment, ticketing, or PNRs.** Not now, not once the UI exists.
 - **Not a shipped product.** This is a proof-of-concept: "done" means demoable end-to-end in both modes with the reasoning visible, not production-hardened, exhaustively tested, or handling every edge case.
 - **Scope is intentionally narrow.** One-way and round-trip flights only. No hotels, cars, multi-city, loyalty/points, seat selection, or user accounts. See the PRD's non-goals for the full list.
@@ -94,14 +99,18 @@ DUFFEL_API_KEY_TEST=duffel_test_...   # optional, not used by default
 Each phase has its own runnable entry point:
 
 ```bash
-npm run phase0   # dummy tool, proves the agent loop wiring
-npm run phase1   # real Duffel search, price-ranked terminal output
-npm run phase2   # search + constraint gating + agent-ordered preferred/secondary picks
-npm test         # offline unit tests for the constraint gate (no network calls)
+npm run phase0        # dummy tool, proves the agent loop wiring
+npm run phase1        # real Duffel search, price-ranked terminal output
+npm run phase2        # search + constraint gating + agent-ordered preferred/secondary picks
+npm run phase3:hitl   # search + gate + book — pauses for human approval on every booking
+npm run phase3:auto   # search + gate + book — auto-books eligible picks, escalates the rest
+npm test              # offline unit tests: constraint gate, mock boundary, oversight routing
 npm run typecheck
 ```
 
-`phase1` and `phase2` currently use a hardcoded demo trip in their respective `src/phase*.ts` files — natural-language intake is planned for Phase 4 alongside the UI.
+Useful Phase 3 flags: `--scenario=autobook|escalate` (tunes the demo budget), `--offline` (uses fixed fixtures instead of a live Duffel call, for reproducible runs), `--answers="y;n;3"` (scripts the human replies for non-interactive recordings). See `src/phase3-two-modes.ts`'s header for the full list.
+
+All phases currently use a hardcoded demo trip in their respective `src/phase*.ts` files — natural-language intake is planned for Phase 4 alongside the UI.
 
 ## Project structure
 
@@ -110,6 +119,7 @@ src/
   phase0-hello-world.ts     # Phase 0: minimal agent, one dummy tool
   phase1-search-flights.ts  # Phase 1: real search tool wired to the agent loop
   phase2-rank-flights.ts    # Phase 2: search + rank tools, agent orders the results
+  phase3-two-modes.ts       # Phase 3: + book_flight (mock) + ask_user; oversight gate wired in
   lib/
     duffel-client.ts        # Duffel client factory (prod/test), key validation
     search-flights.ts       # Offer request -> normalized offers, price-sorted
@@ -118,8 +128,14 @@ src/
     rank-offers.ts          # The deterministic eligible/tolerance/rejected gate
     rank-offers.test.ts     # Offline unit tests for the gate
     offer-store.ts          # In-process bridge passing full-fidelity offers between tools
+    oversight.ts            # The canUseTool gate — the auto-vs-ask trust boundary — + decision log
+    oversight.test.ts       # Offline unit tests for every routing branch (automated + HITL)
+    book-flight.ts          # The MOCK booking action; imports nothing from @duffel/api
+    book-flight.test.ts     # Behavioral tests + a static scan proving no order-endpoint reference
+    prompt-io.ts            # Human-answer provider: real stdin or scripted (--answers)
+    demo-fixtures.ts        # Fixed offline offers for reproducible demo recordings (--offline)
     print-offers.ts         # Terminal rendering, Phase 1
-    print-classified.ts     # Terminal rendering, Phase 2
+    print-classified.ts     # Terminal rendering, Phase 2+
     preflight.ts            # Fail-fast credential checks before the agent loop starts
 ```
 
