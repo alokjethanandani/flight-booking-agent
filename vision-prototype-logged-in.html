@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FlightGenie — Logged-In Vision Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#EDE9FA; --frame:#0A0A0A;
+    --surface:#FFFFFF; --paper:#F6F6F7; --fg:#0A0A0A; --muted:#6B7280;
+    --border:#EAEAEE; --accent:#F97316;
+    --success:#3F7D5B; --success-bg:#E9F2EC;
+    --warning:#B45309; --warning-bg:#FBF1E3;
+    --alert:#DC2626; --alert-bg:#FBEAEA;
+    --shadow:0 6px 24px rgba(17,17,26,.06);
+  }
+  .dark .screen{
+    --surface:#151517; --paper:#1D1D20; --fg:#F5F5F5; --muted:#9AA0A8;
+    --border:#2A2A2E;
+    --success-bg:#16241C; --warning-bg:#2A2013; --alert-bg:#2A1616;
+    --shadow:0 6px 24px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;padding:28px 16px 60px;color:#0A0A0A}
+  .head{text-align:center;margin-bottom:22px;max-width:520px}
+  .head h1{font-size:20px;font-weight:800;letter-spacing:-.02em}
+  .head h1 .g{color:var(--accent)}
+  .head p{font-size:13px;color:#5b5b66;margin-top:6px;line-height:1.5}
+  .controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+  .ctl{border:1px solid #d9d5ea;background:#fff;color:#0A0A0A;font-family:inherit;
+    font-size:12px;font-weight:600;padding:8px 14px;border-radius:999px;cursor:pointer}
+  .ctl.on{background:#0A0A0A;color:#fff;border-color:#0A0A0A}
+
+  /* phone */
+  .phone{width:390px;max-width:100%;background:var(--frame);border-radius:46px;padding:12px;
+    box-shadow:0 30px 70px rgba(30,20,70,.28)}
+  .screen{background:var(--surface);border-radius:36px;height:800px;overflow:hidden;
+    position:relative;color:var(--fg);display:flex;flex-direction:column}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;
+    padding:14px 24px 6px;font-size:13px;font-weight:700;color:var(--fg)}
+  .topbar{display:flex;align-items:center;gap:12px;padding:8px 20px 12px}
+  .avatar{width:40px;height:40px;border-radius:999px;object-fit:cover;
+    background:linear-gradient(135deg,#F9C784,#F97316)}
+  .topbar .brand{font-weight:800;font-size:17px;letter-spacing:-.02em;flex:1}
+  .topbar .brand span{color:var(--accent)}
+  .iconbtn{width:38px;height:38px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);display:grid;place-items:center;color:var(--fg)}
+
+  .scroll{flex:1;overflow-y:auto;padding:4px 20px 20px}
+  .scroll::-webkit-scrollbar{width:0}
+
+  .h2{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:10px 0 4px}
+  .sub{font-size:13px;color:var(--muted);margin-bottom:16px}
+  .section-label{font-size:12px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--muted);margin:22px 2px 10px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:22px;
+    padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+  .card.paper{background:var(--paper);box-shadow:none}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+    font-size:12px;font-weight:600;padding:5px 11px;white-space:nowrap}
+  .pill.success{background:var(--success-bg);color:var(--success)}
+  .pill.warning{background:var(--warning-bg);color:var(--warning)}
+  .pill.alert{background:var(--alert-bg);color:var(--alert)}
+  .pill.ghost{background:transparent;border:1px solid var(--border);color:var(--fg)}
+  .dot{width:8px;height:8px;border-radius:999px;display:inline-block}
+  .dot.success{background:var(--success)} .dot.warning{background:var(--warning)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    background:var(--fg);color:var(--surface);border:none;font-family:inherit;font-weight:700;
+    font-size:15px;padding:15px;border-radius:999px;cursor:pointer}
+  .btn.mini{width:auto;padding:9px 16px;font-size:13px}
+  .btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--border)}
+
+  .row{display:flex;align-items:center;gap:12px}
+  .row.sb{justify-content:space-between}
+  .grow{flex:1;min-width:0}
+  .muted{color:var(--muted)}
+  .fw700{font-weight:700} .fw800{font-weight:800}
+  .fs13{font-size:13px} .fs12{font-size:12px} .fs18{font-size:18px}
+  .mt4{margin-top:4px}.mt8{margin-top:8px}.mt12{margin-top:12px}
+  .accent{color:var(--accent)}
+
+  /* segmented */
+  .seg{display:inline-flex;background:var(--paper);border-radius:999px;padding:4px;gap:2px}
+  .seg button{border:none;background:transparent;font-family:inherit;font-weight:700;
+    font-size:13px;color:var(--muted);padding:8px 16px;border-radius:999px;cursor:pointer}
+  .seg button.on{background:var(--fg);color:var(--surface)}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--paper);
+    border:1px solid var(--border);border-radius:999px;font-size:13px;font-weight:600;
+    padding:8px 12px;margin:0 6px 6px 0}
+  .chip .n{width:18px;height:18px;border-radius:999px;background:var(--fg);color:var(--surface);
+    font-size:11px;display:grid;place-items:center;font-weight:800}
+
+  /* rule card */
+  .rule{background:var(--surface);border:1px solid var(--border);border-radius:22px;
+    padding:16px;box-shadow:var(--shadow);margin-bottom:12px;font-size:14px;line-height:1.55}
+  .rule b{font-weight:800}
+  .rule .foot{display:flex;gap:8px;margin-top:12px}
+  .rule .foot button{flex:1}
+
+  .promo{border:1.5px solid var(--accent);background:var(--surface);border-radius:22px;
+    padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .promo .tag{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--accent)}
+
+  .toggle{width:46px;height:28px;border-radius:999px;background:var(--border);position:relative;
+    cursor:pointer;flex:none;transition:background .2s}
+  .toggle.on{background:var(--success)}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;
+    border-radius:999px;background:#fff;transition:left .2s}
+  .toggle.on::after{left:21px}
+
+  .cap{background:var(--fg);color:var(--surface);border-radius:14px;padding:10px 14px;
+    font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+
+  .killswitch{border:1.5px solid var(--warning);background:var(--warning-bg);
+    border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-top:8px}
+
+  .feeditem{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .feeditem:last-child{border-bottom:none}
+  .feeditem .acts a{font-size:12px;font-weight:700;color:var(--fg);text-decoration:none;
+    border-bottom:2px solid var(--border);padding-bottom:1px;margin-right:14px}
+
+  .listrow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border)}
+  .listrow:last-child{border-bottom:none}
+  .logo{width:36px;height:36px;border-radius:10px;background:var(--paper);display:grid;
+    place-items:center;font-weight:800;font-size:13px;color:var(--fg);flex:none}
+
+  /* bottom nav */
+  .nav{background:var(--fg);margin:0 16px 16px;border-radius:999px;display:flex;
+    justify-content:space-around;align-items:center;padding:8px}
+  .nav button{background:transparent;border:none;color:#8a8a90;width:46px;height:46px;
+    border-radius:999px;display:grid;place-items:center;cursor:pointer}
+  .nav button.on{background:var(--surface);color:var(--fg)}
+  .nav svg{width:22px;height:22px}
+  .hidden{display:none}
+  .screenwrap{display:none;flex-direction:column;height:100%}
+  .screenwrap.on{display:flex}
+  svg{stroke-width:2}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>Flight<span class="g">Genie</span> — Logged-In Vision</h1>
+    <p>Where the app goes after the POC: the account as a <b>trust-configuration surface</b>. Stored preferences become the guardrails that make automation safe. Tap the nav; toggle theme. Mockup only — nothing functional.</p>
+    <div class="controls">
+      <button class="ctl on" id="lightBtn" onclick="setTheme('light')">Light</button>
+      <button class="ctl" id="darkBtn" onclick="setTheme('dark')">Dark</button>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="screen" id="screen">
+      <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+
+      <!-- ============ HOME ============ -->
+      <div class="screenwrap on" data-screen="home">
+        <div class="topbar">
+          <div class="avatar"></div>
+          <div class="brand">Flight<span>Genie</span></div>
+          <div class="iconbtn">&#128269;</div>
+        </div>
+        <div class="scroll">
+          <div class="h2">Hi Lesley</div>
+          <div class="sub">Your agent is watching 2 routes for you.</div>
+
+          <div class="card">
+            <div class="row sb">
+              <span class="pill ghost">Upcoming</span>
+              <span class="pill success"><span class="dot success"></span>Confirmed</span>
+            </div>
+            <div class="fw800 fs18 mt12">Austin → San Francisco</div>
+            <div class="muted fs13 mt4">Sep 14 – Sep 18 · United · 1 stop · Seat 14C (aisle)</div>
+          </div>
+
+          <div class="section-label">Active automation</div>
+          <span class="chip">AUS → SFO · under $350</span>
+          <span class="chip">AUS → NYC · under $520</span>
+
+          <div class="section-label">What your agent did</div>
+          <div class="card">
+            <div class="feeditem">
+              <span class="dot success" style="margin-top:5px"></span>
+              <div class="grow">
+                <div class="fw700 fs13">Auto-booked AUS → SFO · $312</div>
+                <div class="muted fs12 mt4">Within your $350 cap · Visa ••42 · 2 days ago</div>
+                <div class="acts mt8"><a href="#">View</a><a href="#">Undo</a></div>
+              </div>
+            </div>
+            <div class="feeditem">
+              <span class="dot warning" style="margin-top:5px"></span>
+              <div class="grow">
+                <div class="fw700 fs13">Paused — fare $610 over your cap</div>
+                <div class="muted fs12 mt4">AUS → NYC · waiting for your call · 5 days ago</div>
+                <div class="acts mt8"><a href="#">Review</a></div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn mt8">Plan a trip</button>
+        </div>
+      </div>
+
+      <!-- ============ PROFILE ============ -->
+      <div class="screenwrap" data-screen="profile">
+        <div class="topbar"><div class="avatar"></div><div class="brand">Travel profile</div><div class="iconbtn">&#9998;</div></div>
+        <div class="scroll">
+          <div class="h2">Preferences</div>
+          <div class="sub">Low-stakes — edits save instantly, no confirmation.</div>
+
+          <div class="section-label">Preferred airlines <span class="muted" style="text-transform:none;font-weight:600">· soft preference</span></div>
+          <div class="card">
+            <div class="listrow"><span class="chip"><span class="n">1</span></span><div class="logo">UA</div><div class="grow fw700 fs13">United</div><span class="muted">⋮⋮</span></div>
+            <div class="listrow"><span class="chip"><span class="n">2</span></span><div class="logo">DL</div><div class="grow fw700 fs13">Delta</div><span class="muted">⋮⋮</span></div>
+            <div class="listrow"><span class="chip"><span class="n">3</span></span><div class="logo">AS</div><div class="grow fw700 fs13">Alaska</div><span class="muted">⋮⋮</span></div>
+          </div>
+
+          <div class="section-label">Home airports</div>
+          <div class="card"><span class="chip">AUS · Austin</span><span class="chip">SAT · San Antonio</span><span class="chip">+ Add</span></div>
+
+          <div class="section-label">Seat</div>
+          <div class="seg"><button class="on">Aisle</button><button>Window</button><button>No pref.</button></div>
+
+          <div class="section-label">Cabin</div>
+          <div class="seg"><button class="on">Economy</button><button>Premium</button><button>Business</button></div>
+        </div>
+      </div>
+
+      <!-- ============ IDS ============ -->
+      <div class="screenwrap" data-screen="ids">
+        <div class="topbar"><div class="avatar"></div><div class="brand">Traveler &amp; IDs</div><div class="iconbtn">&#9998;</div></div>
+        <div class="scroll">
+          <div class="h2">Your travel identity</div>
+          <div class="sub">Medium-stakes — stored securely, confirmed on edit.</div>
+
+          <div class="section-label">Loyalty programs</div>
+          <div class="card">
+            <div class="listrow"><div class="logo">UA</div><div class="grow"><div class="fw700 fs13">MileagePlus</div><div class="muted fs12">•••• 8842</div></div><span class="pill success"><span class="dot success"></span>Verified</span></div>
+            <div class="listrow"><div class="logo">DL</div><div class="grow"><div class="fw700 fs13">SkyMiles</div><div class="muted fs12">•••• 1207</div></div><span class="pill success"><span class="dot success"></span>Verified</span></div>
+          </div>
+
+          <div class="section-label">Trusted traveler</div>
+          <div class="card">
+            <div class="listrow"><div class="grow"><div class="fw700 fs13">Known Traveler Number</div><div class="muted fs12">TSA PreCheck · ••• 4419</div></div><span class="pill ghost">Edit</span></div>
+            <div class="listrow"><div class="grow"><div class="fw700 fs13">Passport</div><div class="muted fs12">•••• 77K · USA</div></div><span class="pill warning"><span class="dot warning"></span>Exp. 2026</span></div>
+          </div>
+
+          <div class="section-label">Saved travelers</div>
+          <div class="card">
+            <div class="listrow"><div class="avatar" style="width:36px;height:36px"></div><div class="grow fw700 fs13">Lesley Kerr <span class="muted" style="font-weight:600">· you</span></div></div>
+            <div class="listrow"><div class="avatar" style="width:36px;height:36px;background:linear-gradient(135deg,#A7C7E7,#5B8FB9)"></div><div class="grow fw700 fs13">Sam Kerr <span class="muted" style="font-weight:600">· companion</span></div><span class="pill ghost">Book for</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PAYMENT ============ -->
+      <div class="screenwrap" data-screen="payment">
+        <div class="topbar"><div class="avatar"></div><div class="brand">Payment</div><div class="iconbtn">+</div></div>
+        <div class="scroll">
+          <div class="h2">Cards &amp; caps</div>
+          <div class="sub">Highest-stakes. Every card carries a spend cap — that ceiling is what makes auto-booking safe.</div>
+
+          <div class="card">
+            <div class="row sb"><div class="fw800 fs18">Visa ••42</div><span class="pill success">Default</span></div>
+            <div class="muted fs13 mt4">Expires 09/28 · Personal</div>
+            <div class="cap mt12"><span>Auto-book up to</span><span>$400 / trip</span></div>
+            <div class="muted fs12 mt8">Unlocks: <b style="color:var(--fg)">AUS→SFO</b>, <b style="color:var(--fg)">AUS→NYC</b> rules</div>
+          </div>
+
+          <div class="card">
+            <div class="row sb"><div class="fw800 fs18">Amex ••01</div><span class="pill ghost">Backup</span></div>
+            <div class="muted fs13 mt4">Expires 03/27 · Work</div>
+            <div class="cap mt12"><span>Auto-book up to</span><span>$0 · ask first</span></div>
+          </div>
+
+          <div class="killswitch">
+            <span style="font-size:20px">&#9208;</span>
+            <div class="grow"><div class="fw800 fs13" style="color:var(--warning)">Pause all automatic booking</div><div class="fs12" style="color:var(--warning)">Agent will ask before every booking.</div></div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ AUTOMATION ============ -->
+      <div class="screenwrap" data-screen="auto">
+        <div class="topbar"><div class="avatar"></div><div class="brand">Automation &amp; trust</div><div class="iconbtn">&#9881;</div></div>
+        <div class="scroll">
+          <div class="h2">When may I act?</div>
+          <div class="sub">Every rule is a bounded grant of autonomy — a spend cap and an "otherwise ask" fallback.</div>
+
+          <div class="section-label">Default mode</div>
+          <div class="seg" style="width:100%;display:flex"><button style="flex:1">Automatic</button><button class="on" style="flex:1">Ask me first (HITL)</button></div>
+          <div class="muted fs12 mt8">New routes ask first. You graduate specific routes to automatic below.</div>
+
+          <div class="section-label">Progressive trust</div>
+          <div class="promo">
+            <div class="tag">Suggested</div>
+            <div class="fw700 fs13 mt8" style="line-height:1.5">You've picked the same <b>AUS → SFO</b> pattern 3 times. Want me to auto-book it under <b>$350</b> next time?</div>
+            <div class="rule-foot" style="display:flex;gap:8px;margin-top:12px">
+              <button class="btn mini" style="flex:1" onclick="createRule()">Create rule</button>
+              <button class="btn mini ghost" style="flex:1" onclick="this.closest('.promo').style.display='none'">Not now</button>
+            </div>
+          </div>
+
+          <div class="section-label">Your rules</div>
+          <div id="ruleList">
+            <div class="rule">
+              Auto-book <b>AUS → NYC</b>, round-trip, under <b>$520</b>, on <b>preferred airlines</b>, <b>1 stop max</b>, using <b>Visa ••42</b>. Otherwise, <b>ask me</b>.
+              <div class="foot"><button class="btn mini ghost">Edit</button><button class="btn mini ghost">Pause</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ NAV ============ -->
+      <div class="nav">
+        <button class="on" data-nav="home" onclick="go('home',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg></button>
+        <button data-nav="profile" onclick="go('profile',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M4 12h10M4 18h16"/></svg></button>
+        <button data-nav="payment" onclick="go('payment',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18"/></svg></button>
+        <button data-nav="ids" onclick="go('ids',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></button>
+        <button data-nav="auto" onclick="go('auto',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  function go(name, btn){
+    document.querySelectorAll('.screenwrap').forEach(s=>s.classList.toggle('on', s.dataset.screen===name));
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    document.querySelector('.scroll'); // no-op
+  }
+  function setTheme(t){
+    document.body.classList.toggle('dark', t==='dark');
+    lightBtn.classList.toggle('on', t==='light');
+    darkBtn.classList.toggle('on', t==='dark');
+  }
+  function createRule(){
+    const promo = event.target.closest('.promo');
+    const html = '<div class="rule">Auto-book <b>AUS → SFO</b>, round-trip, under <b>$350</b>, on <b>preferred airlines</b>, <b>1 stop max</b>, using <b>Visa ••42</b>. Otherwise, <b>ask me</b>.<div class="foot"><button class="btn mini ghost">Edit</button><button class="btn mini ghost">Pause</button></div></div>';
+    document.getElementById('ruleList').insertAdjacentHTML('afterbegin', html);
+    promo.style.display='none';
+  }
+</script>
+</body>
+</html>
