@@ -41,6 +41,20 @@ export function getSearchResult(
   return { searchId: id, offers };
 }
 
+/**
+ * Finds a single stored offer by its Duffel offer id, across all searches in
+ * this session. Used by book_flight (Phase 3) to recover the full-fidelity
+ * offer for the id it was handed — including when the oversight gate rewrote
+ * the id after a human reselected a different option.
+ */
+export function findOfferById(offerId: string): NormalizedOffer | undefined {
+  for (const offers of store.values()) {
+    const match = offers.find((o) => o.id === offerId);
+    if (match) return match;
+  }
+  return undefined;
+}
+
 /** Test-only reset. */
 export function _clearOfferStore(): void {
   store.clear();

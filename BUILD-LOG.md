@@ -164,3 +164,68 @@ Running log of decisions, progress, and open questions across sessions. Update a
 
 **Note for Phase 2**
 - 220 raw offers with multiple tied at the lowest fare is a realistic input shape to design the ranking/tie-breaking logic against (e.g. what breaks a tie among equally-priced offers — duration? departure time? airline preference?) — worth deciding explicitly when we scope Phase 2 rather than defaulting silently to whatever order Duffel/array sort happens to return.
+
+## 2026-07-08 — Phase 3 built: two modes (automated + HITL), oversight legible
+
+**Design consult first (per CLAUDE.md §3 + global "PRD-first"): walked Alok through the plan, flagged decisions, got sign-off before writing code.**
+
+**Key decisions (Alok, this session)**
+- **Boundary lives in code, not the prompt.** The auto-vs-ask trust boundary is enforced by the SDK's `canUseTool` permission callback (verified present in `@anthropic-ai/claude-agent-sdk@0.3.201`: `CanUseTool`/`PermissionResult`), which fires *before* any tool executes. So no booking can happen unless the gate allows it — the pause is a runtime guarantee, not dependent on the agent choosing to ask. `ask_user` stays as the agent's clarification surface (NOT the booking-approval surface — that's the gate). This is a faithful-but-stronger reading of PRD §5's `ask_user` role; noted so the PRD stays authoritative.
+- **Automated auto-book pick:** agent picks its best option *within the eligible tier*; code hard-gates so only an eligible offer_id can auto-book (mirrors Phase 2 exactly — code gates the tier, agent orders within it).
+- **`ask_user` input:** real stdin (`node:readline`) with a `--answers="a;b"` scripted fallback for repeatable, non-interactive recordings. Same `AnswerProvider` drives both the gate's approval prompts and the `ask_user` tool.
+- **Kept airline preference SOFT** (per PRD): automated mode can auto-book a non-preferred eligible offer. Flagged, Alok did not override.
+- **Included a lightweight offer-expiry beat** in the mock: an expired offer returns `offer_expired` (no fabricated confirmation) and steers the agent to re-search. Slightly beyond the literal PRD; kept as a cheap, realistic oversight moment.
+
+**Routing (the centerpiece), all enforced in `lib/oversight.ts`**
+- AUTOMATED: eligible → ALLOW (auto-book, no human); tolerance → ESCALATE (pause + ask); rejected/unknown → DENY.
+- HITL: eligible/tolerance → PAUSE for explicit approval every time (human may approve / cancel / reselect another option — reselection rewrites the tool input via `updatedInput.offerId`); rejected/unknown → DENY (a hard-failing offer isn't presented as bookable even in HITL — POC line).
+- So "automated" ≠ "unattended": it acts without asking when safe, pauses when not.
+
+**Built**
+- `src/lib/book-flight.ts` — the MOCK action. Pure fabricated confirmation (fake 6-char PNR, `MOCK-` ref, explicit `mock: true`, disclaimer). Imports nothing from `@duffel/api`; no order path. Includes the expiry check. Deliberately "dumb": no policy logic (that's the gate).
+- `src/lib/oversight.ts` — the `canUseTool` gate + a **structured decision record** (`OversightDecision`: mode, tier, outcome, action, reason, human Q&A, reselection). `recordClassification()` bridges rank_offers → gate so tier lookups run on full-fidelity offers by id. `getDecisionLog()` / `formatDecisionLog()` expose the oversight trace for Phase 4's UI to render directly.
+- `src/lib/prompt-io.ts` — shared `AnswerProvider` (real stdin | scripted).
+- `src/lib/demo-fixtures.ts` — 6 fixed round-trip offers, gated behind `--offline`, tuned so budget 650 → auto-book path and budget 420 → escalate path are reproducible without live-fare luck. Dev/demo aid only; the real Duffel search path is still the default and books nothing real either. Flagged as an addition (not a PRD change).
+- `src/lib/offer-store.ts` — added `findOfferById()` (book_flight recovers the full offer for the id it's handed, incl. after a human reselection rewrote it).
+- `src/phase3-two-modes.ts` — 4 tools (search_flights + rank_offers + book_flight + ask_user), mode-specific system prompts, gate wired as `canUseTool`. `book_flight` is intentionally the ONE tool left OUT of `allowedTools` so every booking is forced through the gate (the SDK auto-approves allow-listed tools, bypassing `canUseTool`). Flags: `--mode`, `--scenario`, `--offline`, `--answers`. Prints the oversight trace at the end.
+- `package.json` — `phase3:hitl` / `phase3:auto` scripts; `test` now runs all three suites.
+
+**Verified (offline — the actual Phase 3 deliverable is the gate logic, proven without the model)**
+- `npm run typecheck` clean against real SDK + Duffel types.
+- `npm test` — **29/29 pass** (14 Phase 2 gate + 5 mock-boundary + 10 oversight-routing). Oversight tests exercise every routing branch deterministically (automated eligible/tolerance-approve/tolerance-decline/rejected/unknown; HITL approve/decline/reselect/rejected; non-book pass-through) and assert human input is consumed only when it should be.
+- **Mock boundary (the non-optional guardrail):** grepped all of `src/` — the only Duffel client method invoked anywhere is `duffel.offerRequests.create` (search). No `.orders`/`orders.create`/`/air/orders`/`createOrder` in any executable code (only in the test's forbidden-patterns list and a comment). `book-flight.ts` imports nothing from `@duffel/api`. `book-flight.test.ts` also enforces this statically on every run, so a future edit that wires in a real order call fails CI-style before shipping.
+- **Could NOT run the full live agent loop here** — same sandbox DNS block on `api.anthropic.com` as every prior session (the `--offline` flag removes the Duffel dependency but the loop still needs the Anthropic model call). Consistent with how Phases 1/2 were verified: the deterministic gate/boundary logic is proven offline; the live loop is Alok's to run.
+
+**PRD / UX flags raised (none block; recorded for the doc to stay authoritative)**
+- `ask_user` as booking-approval surface (PRD §5) → implemented as the `canUseTool` gate instead (stronger); `ask_user` kept for clarifications. Consider a one-line PRD §5 note.
+- Soft airline preference can auto-book a non-preferred airline in automated mode — kept per PRD; flag if you'd rather "prefer" trigger a pause.
+- HITL will not book a hard-rejected offer even with a willing human (POC line). Revisit if human override of hard filters is wanted.
+- `--offline` fixtures added as a demo/dev aid (not in PRD); flag if you'd rather drop it.
+
+**Open / next**
+- Alok: run both modes locally to confirm the live loop end-to-end. Suggested demo beats:
+  - `npm run phase3:auto -- --offline` → auto-books an eligible pick, no prompt (the "acts when safe").
+  - `npm run phase3:auto -- --offline --scenario=escalate --answers="y"` → only over-budget options remain; agent is blocked from silent booking and the gate escalates (the "pauses when not"). Try `--answers="n"` to see it decline.
+  - `npm run phase3:hitl -- --offline` → presents preferred + secondary, pauses for approval; type `y`, `n`, or a number to override.
+  - Drop `--offline` on any of the above for the real Duffel search (results vary with live fares; may need to tune the budget in the prompt to hit the tolerance band).
+- Per CLAUDE.md §7, the launch bar is a screen-recordable demo of both modes with the oversight model visible. The terminal oversight trace + gate prompts are that legibility surface for now; Phase 4 (v0/Lovable UI) renders the structured `getDecisionLog()` into the visible auto-vs-ask control surface.
+- Recap Phase 3, get lightweight go-ahead before Phase 4.
+
+## 2026-07-14 — Week 1 content + workflow roadmap (not product code)
+
+**Context**
+- Alok asked for two content/process artifacts, not product changes: (1) a LinkedIn "week 1" show-and-tell, (2) a learning roadmap for loop engineering + a two-model build-vs-verify workflow. No product scope, PRD, or guardrails touched.
+
+**Created**
+- `LinkedIn-Week1-Show-and-Tell.md` — a short feed teaser + a long-form article (learning-in-public voice), with `[IMAGE]`/`[VIDEO]` placeholders for Alok's recordings/moodboard. Covers PRD-first, sending the agent to research (design-system pick), the irreversibility → HITL decision, code-as-policy (the `canUseTool` gate) vs. prompt-as-policy, the build log as memory, and the honest verify gap.
+- `Learning-Roadmap-Loop-Engineering.md` — phased plan (A→E) to close the "generate faster than I can verify" gap: manual loop → separate verifier model → automated Ralph-style loop → commit/PR automation → retro. Includes grounded notes on the Ralph Wiggum loop and the generator-verifier pattern, a metrics table (false-pass rate = top metric), and open questions.
+
+**Accuracy corrections made before publishing (so Alok doesn't ship them wrong)**
+- His raw notes said "no ability to test + verify" — but the repo has 29 passing tests + a static mock-boundary check. Reframed the public "gap" accurately: core trust logic *is* tested; what's unverified is *generated* UI/feature code. Don't undersell the guardrail work.
+- His notes said Radix is "no longer actively maintained." Verified (web): Radix is still maintained (WorkOS), just slower; the original team now builds Base UI at MUI (v1.0 Dec 2025); shadcn defaults to Base UI for new projects as of July 2026. Public copy uses the accurate version.
+- Merged a duplicated bullet (shadcn date-range picker gap appeared twice in the source notes).
+
+**Open / next**
+- Alok: add screen recordings (both agent modes) + moodboard images to the `[IMAGE]`/`[VIDEO]` slots before posting.
+- Roadmap Phase A (run one plan→build→verify loop by hand, verify step as a real command) is the first concrete step — flagged as this week's action.
+- This is orthogonal to the product build; Phase 4 (v0/Lovable UI) is still the next *product* phase and is unaffected.

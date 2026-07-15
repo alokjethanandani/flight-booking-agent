@@ -8,7 +8,9 @@
     "phase0": "tsx src/phase0-hello-world.ts",
     "phase1": "tsx src/phase1-search-flights.ts",
     "phase2": "tsx src/phase2-rank-flights.ts",
-    "test": "tsx src/lib/rank-offers.test.ts",
+    "phase3:hitl": "tsx src/phase3-two-modes.ts --mode=hitl",
+    "phase3:auto": "tsx src/phase3-two-modes.ts --mode=automated",
+    "test": "tsx src/lib/rank-offers.test.ts && tsx src/lib/book-flight.test.ts && tsx src/lib/oversight.test.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
