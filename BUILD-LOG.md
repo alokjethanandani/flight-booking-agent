@@ -229,3 +229,27 @@ Running log of decisions, progress, and open questions across sessions. Update a
 - Alok: add screen recordings (both agent modes) + moodboard images to the `[IMAGE]`/`[VIDEO]` slots before posting.
 - Roadmap Phase A (run one plan→build→verify loop by hand, verify step as a real command) is the first concrete step — flagged as this week's action.
 - This is orthogonal to the product build; Phase 4 (v0/Lovable UI) is still the next *product* phase and is unaffected.
+
+## 2026-07-20 — Phase 4 kickoff: decisions + planning artifacts (no product code yet)
+
+**Context**
+- Alok gave the go-ahead to start Phase 4 (the thin UI), driven by the Phase 5 goal: a screen-recordable demo of both modes with the oversight model visible. Established first that the *only* runnable demo today is the Phase 3 CLI; the existing `vision-prototype-logged-in.html` is the **logged-in vision** (UX brief Part B — explicitly "do not build in v1"), not the v1 demo scope. So the recording requires building the Part A v1 UI, not recording the vision prototype.
+
+**Decisions (Alok, this session)**
+- **Build target — OVERRIDE of locked PRD §10.3.** Phase 4 UI is **hand-built in-repo**, not v0/Lovable. Rationale: the deliverable is a demo video, not a hosted app, so v0/Lovable hosting adds nothing; in-repo is the faster path to an honest, backend-wired demo. Flagged as a locked-decision deviation before proceeding; Alok explicitly approved. PRD §10.3 + §7 Phase 4 line annotated with the override.
+- **Data wiring — live Duffel + live model.** The UI drives the *real* agent loop (real search, real model, real oversight gate), not `--offline` fixtures. Fares vary per take, so the demo prompt is tuned to reliably land a tolerance-tier option and trigger the escalation beat. Booking stays mocked.
+- **Scope — Part A only.** Logged-out, session-only, one page. No auth, no accounts, none of the Part B vision. `book_flight` stays the mock via `lib/book-flight.js`.
+- **Stack.** Vite + React + Tailwind + shadcn/ui (frontend) + a thin Express server run via `tsx` (two endpoints). New deps (`react`, `vite`, `tailwind`, `express`, shadcn) accepted as the one notable reversibility cost. Optimize for portfolio-grade visual fidelity (doubles as the "designer who builds" artifact).
+
+**Key architecture decision (recorded so the build stays faithful)**
+- The browser drives the loop through the **existing `AnswerProvider` seam** (`lib/prompt-io.ts`). A new **web AnswerProvider** implementation pushes the gate's approval prompt to the UI over SSE and resolves when the user clicks Approve/Decline/Reselect. **No changes to `oversight.ts`, `rank-offers.ts`, or `book-flight.ts`** — the trust boundary stays exactly where it's tested (29/29). The server renders `getDecisionLog()` (`OversightDecision[]`) straight to the UI.
+- Mock-boundary guardrail (§14) must be re-run after the server is wired — the new HTTP layer must not open any path to a Duffel `order` call.
+
+**Produced this session (planning artifacts only — no app code):**
+- PRD updated (§10.2 demo note, §10.3 override, §7 Phase 4 line).
+- `HLD-Phase4-Web-UI.md` — technical high-level design (topology, SSE + web-AnswerProvider bridge, API contract, oversight rendering, guardrails, build sequence).
+- `Claude-Code-Prompt-Phase4.md` — a self-contained build brief to hand to Claude Code for the actual implementation.
+
+**Open / next**
+- Alok hands `Claude-Code-Prompt-Phase4.md` to Claude Code to implement Phase 4 per the HLD.
+- On completion: re-run the §14 mock-boundary check, run both modes live end-to-end, then recap Phase 4 before Phase 5 (record + content).

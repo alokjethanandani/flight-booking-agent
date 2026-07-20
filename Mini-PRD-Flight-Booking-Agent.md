@@ -81,7 +81,7 @@ A short ramp so you're not building blind — each step is a tiny commit and its
 - **Phase 1 — Real search (2–3 sessions):** `search_flights` against Duffel; normalize offers; print ranked results in the terminal (no UI).
 - **Phase 2 — Constraints + ranking (1–2 sessions):** budget/stops/duration/airline filters; preferred vs. secondary logic.
 - **Phase 3 — Two modes (2 sessions):** automated (auto-pick + mock-book if in-constraint, else escalate) and HITL (present + wait). **This is the design centerpiece — make the oversight legible.**
-- **Phase 4 — Thin UI + settings in v0/Lovable (2–3 sessions):** chat + result cards + mode/constraint settings.
+- **Phase 4 — Thin UI + settings, hand-built in-repo (2–3 sessions):** chat + result cards + mode/constraint settings + the oversight surfaces (pre-action plan preview, escalation callout, honest mock confirmation). Vite + React + Tailwind + shadcn frontend; a thin Express server bridges the browser to the existing Phase 3 agent loop (live Duffel + live model). *(Build target changed from v0/Lovable → in-repo on 2026-07-20; see §10.3.)* Design: `HLD-Phase4-Web-UI.md` · `Claude-Code-Prompt-Phase4.md` · `UX-Interaction-Brief-Phase4.md` · `design-system-prompt.md`.
 - **Phase 5 — Demo + content (1–2 sessions):** screen-record both modes; write the digest; cut LinkedIn posts.
 
 Each phase ends in something demoable. Stop when it's a clean demo — not when it's "done."
@@ -106,7 +106,8 @@ Each phase ends in something demoable. Stop when it's a clean demo — not when 
 
 1. **Language:** TypeScript, end-to-end (agent + UI). Duffel's TS client is maintained; the Python one isn't.
 2. **Data:** live Duffel token — real multi-airline search; **booking mocked** (never call the paid `order` step).
-3. **UI:** build in **v0/Lovable** (fast; doubles as a "designer who builds" artifact).
+   - **[Phase 4 demo note, 2026-07-20]** The web UI is wired to **live Duffel search + live Claude model** (not the `--offline` fixtures) for the recording. Fares vary per take, so the demo prompt is tuned to reliably land an option in the *tolerance* tier and trigger the escalation beat. Booking stays mocked regardless of wiring.
+3. **UI:** ~~build in **v0/Lovable**~~ — **[OVERRIDDEN 2026-07-20 — Alok]** Phase 4 UI is **hand-built in-repo** (Vite + React + Tailwind + shadcn/ui frontend; a thin Express server run via `tsx` bridges the browser to the existing agent loop) rather than v0/Lovable. Rationale: the deliverable is a screen-recorded demo, not a hosted product, so hosting on v0/Lovable adds nothing; building in-repo is the faster path to an honest, backend-wired demo and still serves the "designer who builds" artifact. `design-system-prompt.md` (shadcn tokens) still governs the visual system. See `HLD-Phase4-Web-UI.md`.
 4. **Trip types:** one-way + round-trip only; multi-city out of scope.
 5. **B2B "policy mode":** out of scope — not built, not tracked.
 
