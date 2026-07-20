@@ -1,14 +1,20 @@
-import { Button } from '@/components/ui/button'
+import { Header } from '@/components/layout/Header'
+import { ChatPanel } from '@/components/chat/ChatPanel'
+import { ResultsPanel } from '@/components/results/ResultsPanel'
 
 function App() {
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background text-foreground">
-      <div className="flex flex-col items-center gap-4">
-        <h1 className="text-2xl font-semibold">FlightGenie — Phase 4 scaffold</h1>
-        <p className="text-muted-foreground">Vite + React + Tailwind + shadcn wired. UI comes next.</p>
-        <Button>shadcn button smoke test</Button>
-      </div>
-    </main>
+    <div className="flex h-svh flex-col bg-background text-foreground">
+      <Header />
+      <main className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col lg:basis-[42%]">
+          <ChatPanel />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col lg:basis-[58%]">
+          <ResultsPanel />
+        </div>
+      </main>
+    </div>
   )
 }
 
