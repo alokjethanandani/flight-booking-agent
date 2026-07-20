@@ -154,4 +154,4 @@ The single metric I care most about: **false-pass rate.** A verifier that waves 
 
 Pick one already-scoped, verifiable story and run **Phase A by hand this week** — plan → build → verify with the verify step as a real command. Everything downstream depends on proving a single unit can be trusted without me reading the diff.
 
-*Reference: the Week 1 show-and-tell (`LinkedIn-Week1-Show-and-Tell.md`) names the gap this roadmap closes.*
+*Reference: the Week 1 show-and-tell (`content/LinkedIn-Week1-Show-and-Tell.md`) names the gap this roadmap closes.*

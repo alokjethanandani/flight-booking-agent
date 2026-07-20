@@ -1,7 +1,7 @@
 # Design-Generation Prompt — Logged-In Vision Screens (FlightGenie)
 
 > Paste the block below into Claude Design (or v0/Lovable) to generate the **logged-in
-> vision** mockups. This is a **vision prototype**, not v1 — see `Vision-Brief-Logged-In.md`
+> vision** mockups. This is a **vision prototype**, not v1 — see `../Vision-Brief-Logged-In.md`
 > for the why and the trust model. It reuses the **v2 design system** defined in
 > `design-system-prompt.md` — generate that system first (or in the same session) so these
 > screens inherit its tokens and components.

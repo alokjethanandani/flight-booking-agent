@@ -14,7 +14,7 @@ Build the Phase 4 thin web UI for the consumer flight-booking agent, hand-built 
 2. `Mini-PRD-Flight-Booking-Agent.md` — scope §3, guardrails §4, locked decisions §10 (note the 2026-07-20 override on §10.3 and the demo note on §10.2).
 3. `HLD-Phase4-Web-UI.md` — **the technical design you are implementing.** Topology §3, the SSE + web-`AnswerProvider` bridge §4, API contract §5, oversight rendering §6, run lifecycle §7, file layout §10.
 4. `UX-Interaction-Brief-Phase4.md` — behavior/flows/states. Part A is the build scope; **Part B is vision — do not build any of it.**
-5. `design-system-prompt.md` — the visual system (shadcn tokens, white-canvas / color-as-signal / black-controls / pill geometry). The UI must match it.
+5. `prompts/design-system-prompt.md` — the visual system (shadcn tokens, white-canvas / color-as-signal / black-controls / pill geometry). The UI must match it.
 6. `src/lib/oversight.ts`, `src/lib/prompt-io.ts`, `src/phase3-two-modes.ts` — the loop you are wrapping. Study how `createOversightGate({ mode, answers })` and the `AnswerProvider` interact.
 
 ## Hard guardrails (non-negotiable — violating any of these fails the phase)
@@ -27,7 +27,7 @@ Build the Phase 4 thin web UI for the consumer flight-booking agent, hand-built 
 
 ## Stack (locked for this phase)
 
-- **Frontend:** Vite + React + TypeScript + Tailwind + **shadcn/ui** (install via the shadcn CLI Vite path; do not add a second component/styling library — no MUI). Tokens per `design-system-prompt.md`. Custom components it calls out: date-range picker on `react-day-picker`, airport autocomplete on the shadcn Combobox (`cmdk` + Popover).
+- **Frontend:** Vite + React + TypeScript + Tailwind + **shadcn/ui** (install via the shadcn CLI Vite path; do not add a second component/styling library — no MUI). Tokens per `prompts/design-system-prompt.md`. Custom components it calls out: date-range picker on `react-day-picker`, airport autocomplete on the shadcn Combobox (`cmdk` + Popover).
 - **Server:** **Express**, run via `tsx` (matches the repo's no-build-step convention). Serves the built SPA in `phase4` mode; in dev, Vite serves the SPA and proxies `/api/*` to Express.
 - Keep everything TypeScript, `NodeNext`, `strict` — consistent with `tsconfig.json`.
 
@@ -45,7 +45,7 @@ Implement the API and SSE events per HLD §5. Render `OversightDecision` per HLD
 
 1. **Scaffold + deps.** Add Vite/React/Tailwind/shadcn under `web/`, Express under `src/server/`, and the npm scripts (`dev:server`, `dev:web`, `dev`, `build:web`, `phase4`). `npm run typecheck` clean. Nothing wired yet.
 2. **Server + bridge.** Express with `/api/run`, `/api/stream` (SSE), `/api/decision`; the run orchestrator wrapping `query()`; the web `AnswerProvider`. Prove the loop runs and streams to a `curl`/console client before any UI.
-3. **SPA shell + tokens.** One page, the design-system tokens (light + dark), the three regions (chat / results / settings) laid out empty. Verify the visual language (white canvas, black controls, pill geometry) against `design-system-prompt.md`.
+3. **SPA shell + tokens.** One page, the design-system tokens (light + dark), the three regions (chat / results / settings) laid out empty. Verify the visual language (white canvas, black controls, pill geometry) against `prompts/design-system-prompt.md`.
 4. **Wire the surfaces.** Chat thread + loop stepper (§A5), result cards + constraint-status badges (§A3), constraints panel with impact hints (§A4), mode toggle defaulting to HITL (§A2b/e), the **pre-action plan preview** (§A2a — the hero), the **escalation callout** (§A2c), the honest **mock confirmation** (§A7), failure/empty states (§A6).
 5. **End-to-end live run + re-verify.** Run both modes in the browser against live Duffel + live model. Then re-run CLAUDE.md §14 mock-boundary check **plus** grep the new `src/server/**` and `web/**` for any `@duffel/api` import or `.orders` reference (must be none). `npm test` still 29/29.
 6. **BUILD-LOG.** Append a dated entry: what was built, the demo commands, verification results, open questions.

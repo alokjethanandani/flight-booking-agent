@@ -30,7 +30,7 @@ This is being built in phases, each one demoable before moving to the next. Here
 | 1 — Real search | `search_flights` against Duffel's live API, normalized + price-ranked in the terminal | ✅ Done |
 | 2 — Constraints + ranking | Deterministic budget/stops/duration gating, soft airline preference, preferred vs. secondary ordering | ✅ Done |
 | 3 — Two modes | Automated (auto-book if in-constraint, else escalate) vs. HITL (always present + wait) — the design centerpiece | ✅ Done |
-| 4 — Thin UI | Chat + result cards + mode/constraint settings (v0/Lovable) | 🚧 Planned |
+| 4 — Thin UI | Chat + result cards + mode/constraint settings, hand-built in-repo (see [`HLD-Phase4-Web-UI.md`](HLD-Phase4-Web-UI.md)) | 🚧 Planned |
 | 5 — Demo + writeup | Screen-recorded walkthrough of both modes | 🚧 Planned |
 
 Full detail on each phase — including dead ends, bugs found, and decisions reversed along the way — is in the running [`BUILD-LOG.md`](BUILD-LOG.md). The original design doc is [`Mini-PRD-Flight-Booking-Agent.md`](Mini-PRD-Flight-Booking-Agent.md).
@@ -70,7 +70,7 @@ The split matters: the pass/fail gate and the booking-approval gate are both cod
 | Flight search | [`@duffel/api`](https://www.npmjs.com/package/@duffel/api), Duffel's official TS client, production search |
 | Validation | Zod v4 |
 | Runtime tooling | `tsx`, Node 18+ |
-| UI (planned, Phase 4) | v0 / Lovable — a thin chat + result cards + settings surface |
+| UI (planned, Phase 4) | Hand-built in-repo — Vite + React + Tailwind + shadcn/ui, thin Express server (see [`HLD-Phase4-Web-UI.md`](HLD-Phase4-Web-UI.md)) |
 
 ## Setup
 
@@ -143,6 +143,10 @@ src/
 
 - [`Mini-PRD-Flight-Booking-Agent.md`](Mini-PRD-Flight-Booking-Agent.md) — the design doc: scope, architecture, phased plan, and the locked decisions this project won't silently deviate from.
 - [`BUILD-LOG.md`](BUILD-LOG.md) — a session-by-session log of what got built, what broke, and why — including the parts that didn't work on the first try.
+- [`HLD-Phase4-Web-UI.md`](HLD-Phase4-Web-UI.md) — the technical design for the Phase 4 web UI (topology, the SSE + web-`AnswerProvider` bridge, API contract, oversight rendering).
+- [`UX-Interaction-Brief-Phase4.md`](UX-Interaction-Brief-Phase4.md) / [`Vision-Brief-Logged-In.md`](Vision-Brief-Logged-In.md) — behavior/flow specs for the v1 build and the (unbuilt) logged-in product vision, respectively.
+- [`prompts/`](prompts/) — the system prompts used to generate the design system and drive Claude Code/Claude Design for this project.
+- [`content/`](content/) — LinkedIn/Medium write-ups documenting the build in public.
 
 ## License
 

@@ -1,7 +1,7 @@
 # Vision Brief — Logged-In FlightGenie (Product Vision, Not v1)
 
 **Owner:** Alok · **For:** Claude Design + portfolio/interview narrative · **Drafted:** 2026-07-14 · **Status:** Vision
-**Companion docs:** `Mini-PRD-Flight-Booking-Agent.md` (v1 scope), `UX-Interaction-Brief-Phase4.md` (v1 build — see Part B, which this expands), `design-system-prompt.md` v2 (visual language), `Vision-Design-Prompt-Logged-In.md` (the paste-into-Claude-Design generation prompt for these screens).
+**Companion docs:** `Mini-PRD-Flight-Booking-Agent.md` (v1 scope), `UX-Interaction-Brief-Phase4.md` (v1 build — see Part B, which this expands), `prompts/design-system-prompt.md` v2 (visual language), `prompts/Vision-Design-Prompt-Logged-In.md` (the paste-into-Claude-Design generation prompt for these screens).
 
 ---
 
@@ -11,7 +11,7 @@ This is the **product vision** — where FlightGenie goes *after* the POC proves
 
 Two hard rules for anyone prototyping this:
 1. **Nothing functional.** Payment, membership IDs, and account data are *mocked static UI only* — never a real vault, never a real charge, never a real credential store. This is a picture of the destination, not the destination.
-2. **The visual system is locked.** Build on `design-system-prompt.md` v2: white canvas, whitespace-forward, **color = signal**, black controls, orange accent only, pill geometry, Inter, light+dark, no illustration.
+2. **The visual system is locked.** Build on `prompts/design-system-prompt.md` v2: white canvas, whitespace-forward, **color = signal**, black controls, orange accent only, pill geometry, Inter, light+dark, no illustration.
 
 ---
 

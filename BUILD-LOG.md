@@ -253,3 +253,12 @@ Running log of decisions, progress, and open questions across sessions. Update a
 **Open / next**
 - Alok hands `Claude-Code-Prompt-Phase4.md` to Claude Code to implement Phase 4 per the HLD.
 - On completion: re-run the §14 mock-boundary check, run both modes live end-to-end, then recap Phase 4 before Phase 5 (record + content).
+
+## 2026-07-20 — Root directory cleanup + README update
+
+Housekeeping pass, no product code touched.
+
+- **`README.md`:** links the new `HLD-Phase4-Web-UI.md`, updates the Phase 4 row/tech-stack line (v0/Lovable → hand-built in-repo, per the 2026-07-20 override above), and adds a "Deeper reading" pointer to the new `prompts/` and `content/` folders.
+- **New `content/` folder:** LinkedIn/Medium write-ups moved out of root — `LinkedIn-Week1-Show-and-Tell.md`, `linkedin-ab-test.md`.
+- **New `prompts/` folder:** the paste-into-Claude-Code / paste-into-Claude-Design system prompts moved out of root — `Claude-Code-Prompt-Phase4.md`, `design-system-prompt.md`, `Vision-Design-Prompt-Logged-In.md`. (`Learning-Roadmap-Loop-Engineering.md`, `UX-Interaction-Brief-Phase4.md`, `Vision-Brief-Logged-In.md`, and `HLD-Phase4-Web-UI.md` are companion/brief docs, not pasteable prompts — left at root.)
+- Cross-references to the five moved files were updated in every doc that names them (`Mini-PRD-Flight-Booking-Agent.md`, `HLD-Phase4-Web-UI.md`, `UX-Interaction-Brief-Phase4.md`, `Vision-Brief-Logged-In.md`, `Learning-Roadmap-Loop-Engineering.md`, and the moved files' own cross-links). `BUILD-LOG.md` itself is left unedited above this entry — it's an append-only session log, not a doc that should be rewritten retroactively.

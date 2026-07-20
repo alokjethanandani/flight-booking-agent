@@ -1,8 +1,8 @@
 # HLD — Phase 4 Web UI (FlightGenie)
 
 **Owner:** Alok · **Drafted:** 2026-07-20 · **Status:** For build
-**Source of truth:** `Mini-PRD-Flight-Booking-Agent.md` (scope/guardrails), `UX-Interaction-Brief-Phase4.md` (behavior/flows), `design-system-prompt.md` (tokens/components). Where any of those disagree with this doc, they win — this is the *technical* layer only.
-**Implements:** PRD §7 Phase 4. **Build brief:** `Claude-Code-Prompt-Phase4.md`.
+**Source of truth:** `Mini-PRD-Flight-Booking-Agent.md` (scope/guardrails), `UX-Interaction-Brief-Phase4.md` (behavior/flows), `prompts/design-system-prompt.md` (tokens/components). Where any of those disagree with this doc, they win — this is the *technical* layer only.
+**Implements:** PRD §7 Phase 4. **Build brief:** `prompts/Claude-Code-Prompt-Phase4.md`.
 
 ---
 
@@ -179,7 +179,7 @@ web/                           Vite + React + Tailwind + shadcn SPA
   src/
     App.tsx                    one page, no router
     components/                chat, result cards, settings, escalation, confirmation
-    lib/theme.ts               tokens from design-system-prompt.md (shadcn CSS vars)
+    lib/theme.ts               tokens from prompts/design-system-prompt.md (shadcn CSS vars)
 package.json                   + react, vite, tailwind, express, shadcn deps + scripts
 ```
 

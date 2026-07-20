@@ -1,7 +1,7 @@
 # UX / Interaction Brief — Phase 4 UI (FlightGenie)
 
 **Owner:** Alok · **For:** Claude Design (AI designers) · **Drafted:** 2026-07-14 · **Status:** For design
-**Companion doc:** `design-system-prompt.md` (tokens + components — the *system* layer). This brief is the *behavior* layer: flows, states, and the oversight interaction model. Read both.
+**Companion doc:** `prompts/design-system-prompt.md` (tokens + components — the *system* layer). This brief is the *behavior* layer: flows, states, and the oversight interaction model. Read both.
 **Source of truth:** `Mini-PRD-Flight-Booking-Agent.md`. Where this brief and the PRD disagree, the PRD wins.
 
 ---
@@ -32,7 +32,7 @@ One page, no routing. Three persistent regions + two overlays:
 | **Escalation callout** (overlay) | "I paused because…" | Inline card in thread | Inline card in thread |
 | **Mock confirmation** (overlay) | Simulated booking receipt | Dialog / full-screen sheet | Dialog |
 
-Defer all responsive token/breakpoint detail to `design-system-prompt.md`. Don't re-specify it here.
+Defer all responsive token/breakpoint detail to `prompts/design-system-prompt.md`. Don't re-specify it here.
 
 ### A2. The oversight model (the centerpiece — spend your design budget here)
 
@@ -76,7 +76,7 @@ A `switch`/segmented control in Settings with a one-line inline explanation of e
   - `tolerance` → **warning** ("Close — slightly over budget")
   - `rejected` → **destructive** ("Breaks: max 1 stop") — and de-emphasize; a rejected offer is not presented as bookable.
 - **"Why this rank"** via progressive disclosure: collapsed badge → expand → the agent's `reason`. Don't dump reasoning inline; let the user pull it.
-- Card content: airline, times, stops, duration, price (per `design-system-prompt.md` flight-card spec).
+- Card content: airline, times, stops, duration, price (per `prompts/design-system-prompt.md` flight-card spec).
 - **Confidence signal:** when the agent's top pick is a close call (e.g., preferred and #2 are near-tied), surface a light "close call" note so a confident pick and a tentative one don't look identical.
 
 ### A4. Constraints panel — guardrails, not a form
@@ -115,7 +115,7 @@ Hold mode + constraint choices in session/local state so they *behave* persisten
 
 ### A10. Interaction-state coverage
 
-Every interactive component ships all states: default · hover · focus · disabled · loading · error (per `design-system-prompt.md`). This brief adds one product-specific state set — **the oversight outcomes** (`allow` / `escalate` / `pause` / `deny`) must each have a distinct, legible visual treatment wired to the semantic tokens.
+Every interactive component ships all states: default · hover · focus · disabled · loading · error (per `prompts/design-system-prompt.md`). This brief adds one product-specific state set — **the oversight outcomes** (`allow` / `escalate` / `pause` / `deny`) must each have a distinct, legible visual treatment wired to the semantic tokens.
 
 ---
 
