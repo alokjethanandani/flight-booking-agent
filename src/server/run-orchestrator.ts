@@ -36,9 +36,9 @@ import {
   type SDKMessage,
   type CanUseTool,
 } from '@anthropic-ai/claude-agent-sdk';
-import { DuffelError } from '@duffel/api';
 
 import { searchFlights } from '../lib/search-flights.js';
+import { describeSearchError } from '../lib/describe-search-error.js';
 import { formatOffersTable } from '../lib/print-offers.js';
 import {
   saveSearchResult,
@@ -208,21 +208,6 @@ function buildEscalationPayload(
 }
 
 // --- Tools (mirror phase3-two-modes.ts's contracts; SSE instead of console) -
-
-function describeSearchError(err: unknown): { model: string } {
-  if (err instanceof DuffelError) {
-    const status = err.meta?.status;
-    const details =
-      err.errors?.map((e) => `${e.code}: ${e.message}`).join('; ') ?? err.message;
-    return {
-      model: `The Duffel search failed (HTTP ${status}): ${details}. Do not guess at flight data — report this error to the user.`,
-    };
-  }
-  const msg = err instanceof Error ? err.message : String(err);
-  return {
-    model: `The search_flights tool failed: ${msg}. Do not guess at flight data — report this error to the user.`,
-  };
-}
 
 function buildSearchTool(active: ActiveRun, offline: boolean) {
   return tool(
