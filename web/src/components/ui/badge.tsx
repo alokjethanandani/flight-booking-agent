@@ -20,10 +20,12 @@ const badgeVariants = cva(
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
         /* Constraint-status tiers (rank-offers.ts OfferTier) — the chromatic
-           core of the oversight model. eligible/tolerance/rejected map here. */
-        success: "border-success-border bg-success-bg text-success",
-        warning: "border-warning-border bg-warning-bg text-warning",
-        brand: "border-brand-border bg-brand-bg text-brand",
+           core of the oversight model. eligible/tolerance/rejected map here,
+           flat muted fills (no border) matching the approved design system. */
+        success: "bg-success-muted text-success-muted-foreground",
+        warning: "bg-warning-muted text-warning-muted-foreground",
+        alert: "bg-alert-muted text-alert-muted-foreground",
+        brand: "bg-brand-muted text-brand-muted-foreground",
       },
     },
     defaultVariants: {

@@ -1,9 +1,14 @@
-import { Moon, Sun } from 'lucide-react'
+import { Moon, Sun, SquarePen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { useTheme } from '@/lib/theme'
 
-export function Header() {
+export function Header({
+  onNewSearch,
+  settingsSlot,
+}: {
+  onNewSearch: () => void
+  settingsSlot: React.ReactNode
+}) {
   const { theme, toggleTheme } = useTheme()
 
   return (
@@ -13,7 +18,10 @@ export function Header() {
         <span className="text-lg font-semibold tracking-tight text-brand">Genie</span>
       </div>
       <div className="flex items-center gap-2">
-        <SettingsPanel />
+        <Button variant="ghost" size="icon-sm" aria-label="New search" onClick={onNewSearch}>
+          <SquarePen className="size-4" />
+        </Button>
+        {settingsSlot}
         <Button
           variant="ghost"
           size="icon-sm"

@@ -6,10 +6,12 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design tokens — prompts/design-system-prompt.md.
- * White canvas, color-as-signal (never decoration), black controls, orange
- * brand accent (sparingly), pill geometry, muted/forest success, amber
- * warning, red destructive. Every token has a light and dark value.
+ * Design tokens — ported verbatim from the approved Claude Design project
+ * ("FlightGenie POC" design-system project, tokens/*.css) so the
+ * real app matches the prototype's exact palette, not a re-guess of it.
+ * White canvas, color-as-signal, black primary control, orange brand accent
+ * (wordmark + preferred-pick emphasis only). success/warning/alert map 1:1
+ * to rank-offers.ts's eligible/tolerance/rejected tiers.
  */
 @theme inline {
     --font-heading: var(--font-sans);
@@ -32,8 +34,6 @@
     --color-border: var(--border);
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
-    --color-destructive-bg: var(--destructive-bg);
-    --color-destructive-border: var(--destructive-border);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
     --color-muted-foreground: var(--muted-foreground);
@@ -50,86 +50,94 @@
     --color-background: var(--background);
 
     /* Brand accent — orange. Wordmark + preferred-pick emphasis ONLY, never
-       a default control fill (design-system-prompt.md "Black is the control
-       neutral"). */
+       a default control fill. */
     --color-brand: var(--brand);
     --color-brand-foreground: var(--brand-foreground);
-    --color-brand-bg: var(--brand-bg);
-    --color-brand-border: var(--brand-border);
+    --color-brand-muted: var(--brand-muted);
+    --color-brand-muted-foreground: var(--brand-muted-foreground);
 
-    /* Semantic status — the chromatic core. Maps 1:1 to rank-offers.ts tiers. */
+    /* Semantic status — first-class, map 1:1 to eligible/tolerance/rejected. */
     --color-success: var(--success);
     --color-success-foreground: var(--success-foreground);
-    --color-success-bg: var(--success-bg);
-    --color-success-border: var(--success-border);
+    --color-success-muted: var(--success-muted);
+    --color-success-muted-foreground: var(--success-muted-foreground);
     --color-warning: var(--warning);
     --color-warning-foreground: var(--warning-foreground);
-    --color-warning-bg: var(--warning-bg);
-    --color-warning-border: var(--warning-border);
+    --color-warning-muted: var(--warning-muted);
+    --color-warning-muted-foreground: var(--warning-muted-foreground);
+    --color-alert: var(--alert);
+    --color-alert-foreground: var(--alert-foreground);
+    --color-alert-muted: var(--alert-muted);
+    --color-alert-muted-foreground: var(--alert-muted-foreground);
 
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) * 1.4);
     --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
-    --radius-pill: 999px;
+    --radius-full: 9999px;
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --radius: 0.75rem;
+
+    /* White canvas — a whisper off-white page, pure-white cards. */
+    --background: oklch(0.985 0.001 90);
+    --foreground: oklch(0.18 0.006 60);
+
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.18 0.006 60);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
+    --popover-foreground: oklch(0.18 0.006 60);
 
-    /* Black is the primary control color. */
-    --primary: oklch(0.145 0 0);
-    --primary-foreground: oklch(0.985 0 0);
+    /* Primary = BLACK control neutral. ~17:1 on white. */
+    --primary: oklch(0.20 0.006 60);
+    --primary-foreground: oklch(0.99 0 0);
 
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.48 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    /* Brand = ORANGE accent only. ~5.0:1 on white for text/border use. */
+    --brand: oklch(0.55 0.17 40);
+    --brand-foreground: oklch(0.99 0.01 75);
+    --brand-muted: oklch(0.96 0.03 55);
+    --brand-muted-foreground: oklch(0.44 0.15 40);
 
-    --destructive: oklch(0.53 0.24 27);
-    --destructive-foreground: oklch(0.985 0 0);
-    --destructive-bg: oklch(0.97 0.03 20);
-    --destructive-border: oklch(0.85 0.09 22);
+    --secondary: oklch(0.965 0.002 80);
+    --secondary-foreground: oklch(0.28 0.006 60);
 
-    --border: oklch(0.9 0 0);
-    --input: oklch(0.9 0 0);
-    --ring: oklch(0.145 0 0);
+    --muted: oklch(0.965 0.002 80);
+    --muted-foreground: oklch(0.50 0.006 60);
 
-    /* Orange brand accent — sparingly (wordmark, preferred-pick emphasis). */
-    --brand: oklch(0.63 0.19 41);
-    --brand-foreground: oklch(0.985 0 0);
-    --brand-bg: oklch(0.97 0.03 55);
-    --brand-border: oklch(0.85 0.1 50);
+    /* Neutral hover tint, NOT the brand orange */
+    --accent: oklch(0.955 0.002 80);
+    --accent-foreground: oklch(0.24 0.006 60);
 
-    /* success — muted/forest green, desaturated so it reads calmly next to
-       the white canvas rather than shouting. */
-    --success: oklch(0.42 0.08 155);
-    --success-foreground: oklch(0.985 0 0);
-    --success-bg: oklch(0.96 0.025 155);
-    --success-border: oklch(0.83 0.07 155);
+    --destructive: oklch(0.48 0.19 25);
+    --destructive-foreground: oklch(0.99 0.01 75);
 
-    /* warning — amber. The tolerance-tier / escalation color. */
-    --warning: oklch(0.55 0.16 60);
-    --warning-foreground: oklch(0.985 0 0);
-    --warning-bg: oklch(0.96 0.05 85);
-    --warning-border: oklch(0.85 0.11 75);
+    --border: oklch(0.91 0.003 80);
+    --input: oklch(0.90 0.003 80);
+    --ring: oklch(0.55 0.17 40 / 0.55);
 
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 1.25rem;
+    /* Semantic status — first-class, map to ranking tiers */
+    --success: oklch(0.42 0.06 155);
+    --success-foreground: oklch(0.99 0.01 120);
+    --success-muted: oklch(0.93 0.025 150);
+    --success-muted-foreground: oklch(0.32 0.06 155);
+
+    --warning: oklch(0.55 0.15 75);
+    --warning-foreground: oklch(0.18 0.03 70);
+    --warning-muted: oklch(0.94 0.05 80);
+    --warning-muted-foreground: oklch(0.38 0.11 70);
+
+    --alert: var(--destructive);
+    --alert-foreground: var(--destructive-foreground);
+    --alert-muted: oklch(0.94 0.03 30);
+    --alert-muted-foreground: oklch(0.42 0.16 27);
+
+    --chart-1: oklch(0.55 0.17 40);
+    --chart-2: oklch(0.42 0.06 155);
+    --chart-3: oklch(0.55 0.15 75);
+    --chart-4: oklch(0.48 0.19 25);
+    --chart-5: oklch(0.55 0.02 60);
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -140,55 +148,61 @@
     --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* Dark mode: same restraint on a near-black surface — color still appears
-   only where it means something. */
+/* Dark mode — near-black surface, same restraint inverted. */
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.19 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.19 0 0);
-    --popover-foreground: oklch(0.985 0 0);
+    --background: oklch(0.16 0.004 60);
+    --foreground: oklch(0.96 0.004 80);
 
-    --primary: oklch(0.93 0 0);
-    --primary-foreground: oklch(0.145 0 0);
+    --card: oklch(0.205 0.005 60);
+    --card-foreground: oklch(0.96 0.004 80);
+    --popover: oklch(0.205 0.005 60);
+    --popover-foreground: oklch(0.96 0.004 80);
 
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.71 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
+    /* Primary = near-WHITE control neutral on dark; dark label. */
+    --primary: oklch(0.95 0.004 80);
+    --primary-foreground: oklch(0.18 0.006 60);
 
-    --destructive: oklch(0.65 0.22 27);
-    --destructive-foreground: oklch(0.145 0 0);
-    --destructive-bg: oklch(0.27 0.06 25);
-    --destructive-border: oklch(0.4 0.12 25);
+    --brand: oklch(0.72 0.15 45);
+    --brand-foreground: oklch(0.18 0.02 40);
+    --brand-muted: oklch(0.30 0.05 45);
+    --brand-muted-foreground: oklch(0.84 0.11 55);
+
+    --secondary: oklch(0.27 0.005 60);
+    --secondary-foreground: oklch(0.96 0.004 80);
+
+    --muted: oklch(0.27 0.005 60);
+    --muted-foreground: oklch(0.70 0.005 70);
+
+    --accent: oklch(0.30 0.005 60);
+    --accent-foreground: oklch(0.96 0.004 80);
+
+    --destructive: oklch(0.68 0.17 25);
+    --destructive-foreground: oklch(0.16 0.02 30);
 
     --border: oklch(1 0 0 / 12%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.708 0 0);
+    --input: oklch(1 0 0 / 16%);
+    --ring: oklch(0.72 0.15 45 / 0.55);
 
-    --brand: oklch(0.72 0.17 45);
-    --brand-foreground: oklch(0.145 0 0);
-    --brand-bg: oklch(0.28 0.06 50);
-    --brand-border: oklch(0.42 0.1 48);
+    --success: oklch(0.72 0.09 155);
+    --success-foreground: oklch(0.16 0.02 150);
+    --success-muted: oklch(0.28 0.04 155);
+    --success-muted-foreground: oklch(0.82 0.08 150);
 
-    --success: oklch(0.75 0.13 155);
-    --success-foreground: oklch(0.145 0 0);
-    --success-bg: oklch(0.27 0.045 155);
-    --success-border: oklch(0.42 0.08 155);
+    --warning: oklch(0.78 0.13 80);
+    --warning-foreground: oklch(0.18 0.03 70);
+    --warning-muted: oklch(0.30 0.05 75);
+    --warning-muted-foreground: oklch(0.85 0.1 80);
 
-    --warning: oklch(0.78 0.15 80);
-    --warning-foreground: oklch(0.145 0 0);
-    --warning-bg: oklch(0.3 0.06 75);
-    --warning-border: oklch(0.46 0.1 72);
+    --alert: var(--destructive);
+    --alert-foreground: var(--destructive-foreground);
+    --alert-muted: oklch(0.30 0.05 30);
+    --alert-muted-foreground: oklch(0.85 0.1 30);
 
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    --chart-1: oklch(0.72 0.15 45);
+    --chart-2: oklch(0.72 0.09 155);
+    --chart-3: oklch(0.78 0.13 80);
+    --chart-4: oklch(0.68 0.17 25);
+    --chart-5: oklch(0.65 0.02 60);
     --sidebar: oklch(0.205 0 0);
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.488 0.243 264.376);

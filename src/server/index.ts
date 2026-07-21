@@ -22,7 +22,11 @@ import {
 import type { RunRequestBody } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = Number(process.env.PORT ?? 3001);
+// Deliberately NOT `process.env.PORT`: in split dev mode (`npm run dev`) the
+// dev-tooling harness exports PORT for the browser-facing process (Vite, on
+// 5173), and this API server is a second, internal process proxied through
+// it (web/vite.config.ts targets :3001) — reusing PORT here would collide.
+const PORT = Number(process.env.API_PORT ?? 3001);
 const SERVE_SPA = process.env.PHASE4_SERVE_SPA === '1';
 
 const app = express();
