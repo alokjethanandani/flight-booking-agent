@@ -7,25 +7,37 @@ import { ResultsSection } from './ResultsSection'
 import { EscalationCard } from './EscalationCard'
 import { ConfirmationCard } from './ConfirmationCard'
 import { ErrorCard } from './ErrorCard'
+import { TypingIndicator } from './TypingIndicator'
+
+// Kinds that already carry their own "in progress" or "waiting on you"
+// visual (a spinner, or a pending human decision) — the generic typing
+// indicator would be redundant or misleading appended after these.
+const SELF_ANIMATING_OR_WAITING = new Set<FeedItem['kind']>([
+  'thinking', 'escalation', 'confirmation', 'error',
+])
 
 export function ChatFeed({
   feed,
+  running,
   onDecide,
   onCancelBooking,
   onRelax,
   onRetry,
 }: {
   feed: FeedItem[]
+  running: boolean
   onDecide: (escalationId: number, answer: string) => void
   onCancelBooking: (id: number) => void
   onRelax: () => void
   onRetry: () => void
 }) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const lastKind = feed[feed.length - 1]?.kind
+  const showTyping = running && (lastKind == null || !SELF_ANIMATING_OR_WAITING.has(lastKind))
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [feed])
+  }, [feed, showTyping])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 sm:p-6">
@@ -76,11 +88,12 @@ export function ChatFeed({
             return null
         }
       })}
-      {feed.length === 0 && (
+      {feed.length === 0 && !running && (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           Tell FlightGenie where you're headed and it'll take it from here.
         </div>
       )}
+      {showTyping && <TypingIndicator />}
       <div ref={bottomRef} />
     </div>
   )

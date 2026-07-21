@@ -7,7 +7,7 @@ import { useAgentRun } from '@/hooks/useAgentRun'
 
 function App() {
   const {
-    screen, mode, constraints, feed, runId, modeAppliesNextRun,
+    screen, mode, constraints, feed, running, runId, modeAppliesNextRun,
     startNewRun, decide, changeMode, setConstraints, newSearch, retry, cancelBooking,
   } = useAgentRun()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -47,6 +47,7 @@ function App() {
         ) : (
           <ChatFeed
             feed={feed}
+            running={running}
             onDecide={(escalationId, answer) => {
               if (runId) void decide(runId, escalationId, answer)
             }}

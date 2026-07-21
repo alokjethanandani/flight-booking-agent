@@ -1,4 +1,4 @@
-import { SearchX, ChevronDown, ChevronUp } from 'lucide-react'
+import { SearchX, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { OffersPayload } from '@/lib/api'
@@ -11,6 +11,7 @@ export function ResultsSection({
   offers: OffersPayload
   onRelax: () => void
 }) {
+  const [showAlternates, setShowAlternates] = useState(false)
   const [showRejected, setShowRejected] = useState(false)
   const bookable = [...offers.eligible, ...offers.tolerance]
 
@@ -31,21 +32,41 @@ export function ResultsSection({
     )
   }
 
+  const [preferred, ...alternates] = bookable
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-        Ranked by fit · {bookable.length} of {bookable.length + offers.rejected.length}
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Sparkles className="size-3 flex-shrink-0" />
+        FlightGenie is reasoning over {bookable.length + offers.rejected.length} offers against your rules — it'll ask you if nothing's an exact match.
       </div>
-      {bookable.map((offer, i) => (
-        <FlightResultCard key={offer.offerId} offer={offer} preferred={i === 0} />
-      ))}
+      {preferred && <FlightResultCard offer={preferred} preferred />}
+
+      {alternates.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAlternates((v) => !v)}
+          className="flex items-center gap-1 self-start text-xs font-medium text-foreground"
+        >
+          {showAlternates ? 'Hide' : `See ${alternates.length} other matching option${alternates.length > 1 ? 's' : ''}`}
+          {showAlternates ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+        </button>
+      )}
+      {showAlternates && (
+        <div className="flex flex-col gap-3">
+          {alternates.map((offer) => (
+            <FlightResultCard key={offer.offerId} offer={offer} preferred={false} />
+          ))}
+        </div>
+      )}
+
       {offers.rejected.length > 0 && (
         <button
           type="button"
           onClick={() => setShowRejected((v) => !v)}
           className="flex items-center gap-1 self-start text-xs text-muted-foreground"
         >
-          {offers.rejected.length} rejected offer{offers.rejected.length > 1 ? 's' : ''}
+          {showRejected ? 'Hide' : `${offers.rejected.length} rejected offer${offers.rejected.length > 1 ? 's' : ''}`}
           {showRejected ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
         </button>
       )}

@@ -16,8 +16,12 @@ export function EscalationCard({
   onAnswer: (answer: string) => void
 }) {
   const [showPrompt, setShowPrompt] = useState(false)
+  const [showAlternates, setShowAlternates] = useState(false)
   const [freeTextReply, setFreeTextReply] = useState('')
   const recommended = payload.offers.find((o) => o.offerId === payload.requestedOfferId)
+  const alternates = payload.offers.filter((o) => o.offerId !== payload.requestedOfferId)
+  const recommendOption = payload.options.find((o) => o.value === 'y')
+  const declineOption = payload.options.find((o) => o.value === 'n')
 
   const title = payload.isFreeText
     ? 'FlightGenie has a question'
@@ -35,6 +39,8 @@ export function EscalationCard({
     ? payload.options.find((o) => o.value === resolvedAnswer)?.label ?? resolvedAnswer
     : null
 
+  const answered = resolvedAnswer != null
+
   return (
     <div
       role="status"
@@ -48,19 +54,36 @@ export function EscalationCard({
         </div>
       </div>
 
-      {!payload.isFreeText && payload.mode === 'hitl' && payload.offers.length > 0 && (
+      {!payload.isFreeText && recommended && (
+        <FlightResultCard
+          offer={recommended}
+          preferred
+          selectLabel="Book"
+          onSelect={!answered && recommendOption ? () => onAnswer(recommendOption.value) : undefined}
+        />
+      )}
+
+      {!payload.isFreeText && alternates.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAlternates((v) => !v)}
+          className="flex items-center gap-1 self-start text-xs font-medium opacity-80"
+        >
+          {showAlternates ? 'Hide' : `See ${alternates.length} other option${alternates.length > 1 ? 's' : ''}`}
+          {showAlternates ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+        </button>
+      )}
+      {showAlternates && (
         <div className="flex flex-col gap-2.5">
-          {payload.offers.map((offer) => {
-            const opt = payload.options.find(
-              (o) => (offer.offerId === payload.requestedOfferId && o.value === 'y') || o.value === String(offer.number),
-            )
+          {alternates.map((offer) => {
+            const opt = payload.options.find((o) => o.value === String(offer.number))
             return (
               <FlightResultCard
                 key={offer.offerId}
                 offer={offer}
-                preferred={offer.offerId === payload.requestedOfferId}
-                selectLabel={opt?.label ?? 'Choose this'}
-                onSelect={resolvedAnswer == null ? () => onAnswer(opt?.value ?? String(offer.number)) : undefined}
+                preferred={false}
+                selectLabel="Book"
+                onSelect={!answered && opt ? () => onAnswer(opt.value) : undefined}
               />
             )
           })}
@@ -106,20 +129,13 @@ export function EscalationCard({
           </Button>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          {payload.options
-            .filter((o) => payload.mode === 'automated' || o.value === 'y' || o.value === 'n')
-            .map((o) => (
-              <Button
-                key={o.value}
-                size="sm"
-                variant={o.value === 'y' ? 'default' : o.value === 'n' ? 'ghost' : 'outline'}
-                onClick={() => onAnswer(o.value)}
-              >
-                {o.label}
-              </Button>
-            ))}
-        </div>
+        declineOption && (
+          <div>
+            <Button size="sm" variant="ghost" onClick={() => onAnswer(declineOption.value)}>
+              {declineOption.label}
+            </Button>
+          </div>
+        )
       )}
     </div>
   )
