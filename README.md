@@ -54,6 +54,29 @@ Right now this runs as a terminal script, not a UI:
 
 The split matters: the pass/fail gate and the booking-approval gate are both code (deterministic, unit-tested, auditable). The model only orders eligible offers into a narrative preferred/secondary pick and explains its reasoning — it never gets to decide whether a booking is allowed to happen. An LLM shouldn't be trusted to enforce a precise numeric boundary reproducibly — that's a guardrail, not a suggestion.
 
+## The core innovation: the decision to act or ask lives in code, not the prompt or the screen
+
+The hard problem in this project isn't the flight search — it's deciding, for each result, whether the agent should book it on its own or stop and ask a person. That decision has to be reliable every single time, which means it can't be left to the two most persuadable parts of the system: the LLM's judgment and the UI's presentation layer.
+
+**1. A deterministic gate classifies every offer before the agent reasons about it.** [`rank-offers.ts`](src/lib/rank-offers.ts) is plain, unit-tested code — not a model call — that sorts every search result into one of three tiers against the user's constraints (budget, stops, duration):
+- **Eligible** — meets every constraint. Safe to auto-book.
+- **Tolerance** — over budget by up to 20% but otherwise compliant. Never auto-booked; always a candidate for escalation.
+- **Rejected** — breaks a hard constraint, or unknown data against a set constraint (conservative by default: missing information is treated as a failure, not a pass).
+
+An LLM is good at judgment and bad at reliably enforcing a precise numeric line like "20% over budget." So that line is drawn in code. The agent only gets to reason *after* the gate has already filtered the field — it orders the eligible survivors into a preferred pick plus alternatives and explains its reasoning in plain language, but it never gets a vote on what counts as in-bounds.
+
+**2. A second, independent gate decides whether a booking is allowed to execute at all.** Classifying an offer and being allowed to book it are two different questions, so they're two different pieces of code. `book_flight` is deliberately left out of the agent's allowed tools; every attempt to call it is intercepted by a permission callback (`canUseTool`) in [`oversight.ts`](src/lib/oversight.ts) that runs *before* the tool executes and returns allow, pause, or deny — never something the model can talk its way past. Mode selects the policy:
+- **Automated mode:** eligible → books silently; tolerance → pauses and asks; rejected → denied outright.
+- **Human-in-the-loop mode:** eligible *and* tolerance both pause for explicit approval; rejected is still denied even if a human would say yes — the system doesn't let a person override a hard constraint in this version.
+
+Every decision — mode, tier, outcome, reasoning — is written to a structured log, so the automated/ask-a-human boundary is something you can point to and audit, not a black box you have to trust.
+
+**3. The booking action itself can't reach a real transaction, even if every gate above were somehow bypassed.** `book_flight` is a mock: it fabricates a confirmation and never calls a real order API. This is enforced twice — once behaviorally (the function itself), and once statically, with a test that scans the booking code's actual source for any reference to a real order call. That test suite is the project's floor: nothing above it can compromise it.
+
+**4. When the browser UI came along, it was built to render this boundary, not reimplement it.** The temptation was to put the act-vs-ask logic in the screen — check the budget, decide the color, render accordingly. Instead, the UI stays downstream of everything above: it displays the gate's output — green "meets all your rules," amber "slightly over budget, want to book anyway?", a receipt stamped `simulated` — but the decision itself is already made by the time it reaches the screen. The proof this held: the oversight and mock-boundary test suites didn't need to change while the entire UI was designed and built. If they had, that would have been the signal that the boundary had quietly moved into the presentation layer — the one place it can't be reliably enforced.
+
+The design principle underneath all of it: an agent that's trustworthy enough to act autonomously some of the time has to make *where that line is* legible and provable — not a matter of prompting the model nicely, and not a matter of styling the UI convincingly.
+
 ## Guardrails — what this is not
 
 - **`book_flight` is always mocked.** No code path calls Duffel's paid `order` endpoint — ever, in any mode. It returns a fake confirmation record. This is the one property of the project that isn't allowed to slip — it's enforced both behaviorally (the mock function itself) and statically (a test that scans the booking code's actual source for any Duffel order reference).
