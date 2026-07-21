@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { parseBudgetFromPrompt } from '@/lib/parse-budget'
 import {
   startRun,
   submitDecision,
@@ -35,7 +36,9 @@ export type FeedItem =
   | { id: number; kind: 'note'; text: string }
 
 export interface ConstraintsState {
-  budget: number | null
+  // Budget is NOT here anymore — it is expressed in the user's prompt and parsed
+  // per-run (parseBudgetFromPrompt), so the guardrails panel never carries a
+  // default budget that could conflict with what the user typed.
   maxStops: number
   durHours: number
   preferredAirline: string
@@ -46,11 +49,15 @@ export interface ConstraintsState {
   cabin: 'economy' | 'premium_economy' | 'business' | 'first'
 }
 
+/** Sentinel for the airline dropdown meaning "no preference — all carriers
+ *  considered equally." Radix Select can't use an empty-string item value, so
+ *  this named value stands in for the falsy "no airline" case throughout. */
+export const ANY_AIRLINE = 'Any'
+
 export const DEFAULT_CONSTRAINTS: ConstraintsState = {
-  budget: null,
   maxStops: 0,
   durHours: 12,
-  preferredAirline: 'Delta',
+  preferredAirline: ANY_AIRLINE,
   airlineHard: false,
   passengers: 1,
   cabin: 'economy',
@@ -61,14 +68,19 @@ const AIRLINE_CODES: Record<string, string> = {
   JetBlue: 'B6', Alaska: 'AS', Frontier: 'F9', Spirit: 'NK',
 }
 
-function airlineCode(c: ConstraintsState): string | undefined {
-  return c.preferredAirline ? (AIRLINE_CODES[c.preferredAirline] ?? c.preferredAirline) : undefined
+/** True when the user has expressed no airline preference. */
+export function hasAirlinePreference(c: ConstraintsState): boolean {
+  return !!c.preferredAirline && c.preferredAirline !== ANY_AIRLINE
 }
 
-function toApiConstraints(c: ConstraintsState): Constraints {
+function airlineCode(c: ConstraintsState): string | undefined {
+  return hasAirlinePreference(c) ? (AIRLINE_CODES[c.preferredAirline] ?? c.preferredAirline) : undefined
+}
+
+function toApiConstraints(c: ConstraintsState, budget: number | null): Constraints {
   return {
-    maxPrice: c.budget ?? undefined,
-    currency: c.budget != null ? 'USD' : undefined,
+    maxPrice: budget ?? undefined,
+    currency: budget != null ? 'USD' : undefined,
     maxStops: c.maxStops,
     maxTotalDurationMinutes: c.durHours * 60,
     // The airline always goes to the gate as the soft signal (rank-offers.ts
@@ -88,14 +100,15 @@ function buildTripRequest(query: string, c: ConstraintsState): string {
  * exactly the ones rank-offers.ts filters/scores on (stops, budget, duration,
  * soft airline). Rendered deterministically from the run's own constraints,
  * not paraphrased by the model, so it always matches what the gate actually
- * enforced.
+ * enforced. Budget is passed in separately because it comes from the prompt,
+ * not the persistent constraints state.
  */
-export function summarizeConstraints(c: ConstraintsState): string {
+export function summarizeConstraints(c: ConstraintsState, budget: number | null): string {
   const parts: string[] = []
   parts.push(c.maxStops === 0 ? 'nonstop' : `max ${c.maxStops} stop${c.maxStops > 1 ? 's' : ''}`)
-  if (c.budget != null) parts.push(`under $${c.budget.toLocaleString('en-US')}`)
+  if (budget != null) parts.push(`under $${budget.toLocaleString('en-US')}`)
   parts.push(`under ${c.durHours}h total`)
-  if (c.preferredAirline) parts.push(`${c.preferredAirline} ${c.airlineHard ? 'only' : 'preferred'}`)
+  if (hasAirlinePreference(c)) parts.push(`${c.preferredAirline} ${c.airlineHard ? 'only' : 'preferred'}`)
   return parts.join(', ')
 }
 
@@ -168,11 +181,16 @@ export function useAgentRun() {
     activeThinkingIdRef.current = null
     setRunning(true)
 
+    // Budget is the user's — parsed from the prompt they typed, then fed to the
+    // deterministic gate. This is the single source of truth for the cap; the
+    // guardrails panel no longer carries one, so the two can't disagree.
+    const budget = parseBudgetFromPrompt(query)
+
     try {
       const tripRequest = buildTripRequest(query, constraints)
       const { runId: newRunId } = await startRun({
         tripRequest,
-        constraints: toApiConstraints(constraints),
+        constraints: toApiConstraints(constraints, budget),
         mode,
         hardAirline: constraints.airlineHard ? airlineCode(constraints) : undefined,
       })
@@ -192,7 +210,7 @@ export function useAgentRun() {
             id: nextId(),
             kind: 'offers',
             offers: p,
-            constraintSummary: summarizeConstraints(constraints),
+            constraintSummary: summarizeConstraints(constraints, budget),
           })
         },
         onEscalation: (p) => {

@@ -90,6 +90,8 @@ export function ChatFeed({
                 offers={item.offers}
                 constraintSummary={item.constraintSummary}
                 onRelax={onRelax}
+                onRetry={onRetry}
+                running={running}
               />
             )
           case 'escalation':

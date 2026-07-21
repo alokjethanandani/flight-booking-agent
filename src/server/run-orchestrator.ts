@@ -293,13 +293,28 @@ function buildRankOffersTool(active: ActiveRun, constraints: Constraints, hardAi
         searchedCount: found.offers.length,
       } satisfies OffersPayload);
 
-      const guidance =
-        '\n\nChoose from the ELIGIBLE tier. To proceed, call book_flight with the ' +
-        'offerId of your recommended pick — the system enforces the booking policy ' +
-        'for your mode (auto-book vs. ask the user), so just make your best pick. ' +
-        'If ELIGIBLE is empty but TOLERANCE has an option, still call book_flight ' +
-        'on the closest one — the system will escalate to the user rather than ' +
-        'booking silently. If everything is rejected, explain why and do not book.';
+      const nothingBookable =
+        classified.eligible.length === 0 && classified.tolerance.length === 0;
+
+      // When the gate leaves nothing bookable, the run PAUSES for the user: the
+      // UI shows an empty-state card with "Adjust rules" + "Search again", and
+      // the user re-runs the search once they have loosened a constraint. So the
+      // agent must NOT re-search on its own here — a self-directed retry both
+      // pre-empts the user's decision (undercutting oversight) and spends Duffel
+      // search credits on every loop. Stop, say briefly why, hand back control.
+      const guidance = nothingBookable
+        ? '\n\nNothing here is bookable — every offer broke one of the user\'s hard ' +
+          'rules. Do NOT call search_flights or rank_offers again; do NOT book ' +
+          'anything. Stop and, in one short sentence, tell the user their current ' +
+          'rules filtered out every option and that they can loosen a rule and ' +
+          'search again. The UI already shows the empty state and the buttons — do ' +
+          'not restate the offer counts or list the rules yourself.'
+        : '\n\nChoose from the ELIGIBLE tier. To proceed, call book_flight with the ' +
+          'offerId of your recommended pick — the system enforces the booking policy ' +
+          'for your mode (auto-book vs. ask the user), so just make your best pick. ' +
+          'If ELIGIBLE is empty but TOLERANCE has an option, still call book_flight ' +
+          'on the closest one — the system will escalate to the user rather than ' +
+          'booking silently.';
 
       return {
         content: [
@@ -379,7 +394,10 @@ function systemPromptFor(mode: Mode): string {
     'book_flight (MOCK — no real ticket), ask_user (clarifications only). ' +
     'Always search, then rank_offers, before booking. Never fabricate flight ' +
     'data or confirmations. If a booking is denied by the system, respect it ' +
-    'and explain; if an offer expired, call search_flights again. Use ask_user ' +
+    'and explain; if an offer expired, call search_flights again. If rank_offers ' +
+    'leaves nothing bookable (no eligible and no tolerance offers), do NOT ' +
+    'search again on your own — the user pauses here to loosen a rule and ' +
+    're-run the search themselves; just stop and tell them briefly. Use ask_user ' +
     'only for missing trip details (e.g. an ambiguous city), never to get ' +
     'booking approval. The UI already shows the user how many offers came back ' +
     'and which constraints the deterministic gate is applying — do NOT restate ' +

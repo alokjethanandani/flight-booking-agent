@@ -1,4 +1,4 @@
-import { SlidersHorizontal, ShieldCheck, Wallet, GitCommitHorizontal, Clock, Plane, Users, Armchair, Zap, UserCheck } from 'lucide-react'
+import { SlidersHorizontal, ShieldCheck, GitCommitHorizontal, Clock, Plane, Users, Armchair, Zap, UserCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -19,9 +19,10 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import type { Mode, OffersPayload } from '@/lib/api'
+import { ANY_AIRLINE, hasAirlinePreference } from '@/hooks/useAgentRun'
 import type { ConstraintsState } from '@/hooks/useAgentRun'
 
-const AIRLINES = ['Delta', 'American', 'United', 'Southwest', 'JetBlue', 'Alaska', 'Frontier', 'Spirit']
+const AIRLINES = [ANY_AIRLINE, 'Delta', 'American', 'United', 'Southwest', 'JetBlue', 'Alaska', 'Frontier', 'Spirit']
 const CABINS: { value: ConstraintsState['cabin']; label: string }[] = [
   { value: 'economy', label: 'Economy' },
   { value: 'premium_economy', label: 'Premium economy' },
@@ -128,24 +129,10 @@ export function SettingsPanel({
             })}
           </div>
 
-          <div className="flex flex-col gap-1.5 rounded-lg border border-border p-3">
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="flex items-center gap-2 text-muted-foreground"><Wallet className="size-3.5" /> Budget</span>
-              <div className="relative">
-                <span className="absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                <Input
-                  type="number"
-                  min={0}
-                  step={50}
-                  placeholder="No max"
-                  value={constraints.budget ?? ''}
-                  onChange={(e) => onConstraintsChange({ budget: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) })}
-                  className="h-9 w-28 pl-6 text-left"
-                />
-              </div>
-            </div>
+          <div className="rounded-lg border border-border bg-secondary/50 p-3 text-xs leading-normal text-muted-foreground">
+            Set your budget right in your search — e.g. <span className="font-medium text-foreground">"under $600"</span>. FlightGenie reads it from there, so it always matches what you asked for.
             {lastOffers && (
-              <div className="text-xs text-muted-foreground">
+              <div className="mt-1.5 border-t border-border pt-1.5">
                 Last search: {lastOffers.eligible.length} eligible · {lastOffers.tolerance.length} within tolerance · {lastOffers.rejected.length} rejected — recalculated on your next search.
               </div>
             )}
@@ -182,27 +169,44 @@ export function SettingsPanel({
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Plane className="size-3.5" /> Airline
             </div>
-            <Select value={constraints.preferredAirline} onValueChange={(v) => onConstraintsChange({ preferredAirline: v as string })}>
+            <Select
+              value={constraints.preferredAirline}
+              onValueChange={(v) =>
+                onConstraintsChange(
+                  v === ANY_AIRLINE
+                    ? { preferredAirline: v, airlineHard: false }
+                    : { preferredAirline: v as string },
+                )
+              }
+            >
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {AIRLINES.map((a) => (
-                  <SelectItem key={a} value={a}>{a}</SelectItem>
+                  <SelectItem key={a} value={a}>{a === ANY_AIRLINE ? 'Any airline' : a}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
-              <Checkbox
-                className="mt-0.5"
-                checked={constraints.airlineHard}
-                onCheckedChange={(checked) => onConstraintsChange({ airlineHard: checked })}
-              />
-              <span>Filter out all other airline carriers</span>
-            </label>
-            <div className="text-xs text-muted-foreground">
-              {constraints.airlineHard
-                ? `Hard requirement — only ${constraints.preferredAirline} flights will be considered.`
-                : 'Soft preference — never eliminates an offer, only breaks ties.'}
-            </div>
+            {hasAirlinePreference(constraints) ? (
+              <>
+                <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
+                  <Checkbox
+                    className="mt-0.5"
+                    checked={constraints.airlineHard}
+                    onCheckedChange={(checked) => onConstraintsChange({ airlineHard: checked })}
+                  />
+                  <span>Filter out all other airline carriers</span>
+                </label>
+                <div className="text-xs text-muted-foreground">
+                  {constraints.airlineHard
+                    ? `Hard requirement — only ${constraints.preferredAirline} flights will be considered.`
+                    : 'Soft preference — never eliminates an offer, only breaks ties.'}
+                </div>
+              </>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                No airline preference — every carrier is considered equally.
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">

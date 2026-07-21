@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { MapPin, Search, Users, Repeat, GitCommitHorizontal, Plane, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { hasAirlinePreference } from '@/hooks/useAgentRun'
 import type { ConstraintsState } from '@/hooks/useAgentRun'
 
 const EXAMPLES = [
@@ -74,7 +75,9 @@ export function HomeScreen({
           </div>
           <div className="flex items-center gap-2.5 text-foreground">
             <Plane className="size-3.5 text-muted-foreground" />
-            {constraints.airlineHard ? (
+            {!hasAirlinePreference(constraints) ? (
+              <>Any airline <span className="text-muted-foreground">(no preference)</span></>
+            ) : constraints.airlineHard ? (
               <>{constraints.preferredAirline} only <span className="text-muted-foreground">(filter)</span></>
             ) : (
               <>{constraints.preferredAirline} preferred <span className="text-muted-foreground">(soft)</span></>

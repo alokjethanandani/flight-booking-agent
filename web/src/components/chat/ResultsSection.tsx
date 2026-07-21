@@ -8,10 +8,14 @@ export function ResultsSection({
   offers,
   constraintSummary,
   onRelax,
+  onRetry,
+  running,
 }: {
   offers: OffersPayload
   constraintSummary: string
   onRelax: () => void
+  onRetry: () => void
+  running: boolean
 }) {
   const [showAlternates, setShowAlternates] = useState(false)
   const [showRejected, setShowRejected] = useState(false)
@@ -24,11 +28,19 @@ export function ResultsSection({
           <SearchX className="mt-0.5 size-4.5 flex-shrink-0 text-muted-foreground" />
           <div className="text-sm leading-normal text-foreground">
             <b>No offers meet your rules right now.</b>{' '}
-            {offers.rejected[0]?.reasons[0] ?? 'Every option was filtered out.'}
+            {offers.searchedCount > 0
+              ? `The search returned ${offers.searchedCount} option${offers.searchedCount > 1 ? 's' : ''}, but none cleared your rules.`
+              : 'The search came back empty.'}
+            <div className="mt-1 text-xs text-muted-foreground">
+              Applying: <span className="font-medium text-foreground">{constraintSummary}</span>. Loosen a rule, then search again.
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={onRelax}>Relax a rule</Button>
+          <Button size="sm" onClick={onRelax}>Adjust rules</Button>
+          <Button size="sm" variant="outline" onClick={onRetry} disabled={running}>
+            Search again
+          </Button>
         </div>
       </div>
     )

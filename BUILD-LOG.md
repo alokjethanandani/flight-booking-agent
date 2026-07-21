@@ -294,3 +294,46 @@ Housekeeping pass, no product code touched.
 **Open / next**
 - Phase 5: screen-record both modes (the automated-escalation take above is a strong candidate beat — it lands the "acts when safe, pauses when not" story in one search), write the digest, cut LinkedIn posts.
 - Minor rough edges noted but not blocking: rapid/overlapping browser interactions during manual testing occasionally produced confusing intermediate states (stray clicks landing on animating elements, a numeric input not selecting-all on click) — automation-driving artifacts, not app bugs, but worth a UI polish pass (e.g. select-all on focus for the budget input) before recording.
+
+## 2026-07-21 — Empty-result pause: agent stops, user adjusts rules + re-runs
+
+**Feature request (Alok):** When the agent can't find any matching results, pause and let the user change hard constraints *before* searching again.
+
+**Problem (as seen in the screenshot Alok shared):** two things fought the intent when `rank_offers` classified zero bookable offers.
+1. **The agent looped instead of pausing.** Nothing in code stopped it; `rank_offers`' guidance only said "if everything is rejected, explain why and do not book," so the model improvised and went off to *"pull a fresh search and re-run the gate"* on its own — pre-empting the user's decision and burning a Duffel search credit each loop.
+2. **The empty-state card was a dead end.** `ResultsSection`'s empty branch offered only "Relax a rule" → opens Settings, but after editing there was no way to re-run the same query. The only reset was "New search," which wipes the trip.
+
+**What changed**
+- **`src/server/run-orchestrator.ts`** — `rank_offers` now branches its guidance: when `eligible.length === 0 && tolerance.length === 0`, it explicitly tells the model **not** to call `search_flights`/`rank_offers` again and to stop with one short sentence handing control back to the user. Reinforced the same rule in the shared system prompt. This is a prompt-level instruction, not a code guardrail — deliberately, because re-searching isn't a *safety* boundary (the real one, no auto-booking of non-eligible offers, stays enforced in code per §11); stopping the loop is about respecting user oversight + not spending search credits.
+- **`web/src/components/chat/ResultsSection.tsx`** — empty state rebuilt as the adjust-and-retry surface: shows the binding rules (reuses the `constraintSummary` already passed in) so the user sees exactly what to loosen, keeps **Adjust rules** (primary → Settings), and adds **Search again** (secondary, disabled while a run is active). "Search again" is the existing `retry()` → `startNewRun(lastQuery)`, which reads current constraint state, so edits made in Settings flow through untouched.
+- **`web/src/components/chat/ChatFeed.tsx`** — threads `onRetry` + `running` (both already in scope) into `ResultsSection`.
+
+**Design decision Alok made:** "Search again" is a **manual button**, not an auto-re-run on constraint change — keeps the user in control and avoids surprise credit spend on every edit (matches the "pause" intent).
+
+**Verified live** (browser, production Duffel + live model, HITL mode):
+- Tight budget ($20, nonstop) → search returned 103 offers, all rejected → empty-state card renders "No offers meet your rules right now. The search returned 103 options, but none cleared your rules. Applying: nonstop, under $20, under 12h total, Delta preferred." with **Adjust rules** + **Search again**. The agent **stopped** ("…you can loosen a rule and re-run the search from here") and did **not** issue another search.
+- Clicked **Adjust rules** → Settings opened → loosened budget to $900 → **Search again** → fresh run re-ran with `under $900` applied → 12 matching offers, preferred pick American Airlines $412. Full pause→adjust→resume loop confirmed.
+- CLAUDE.md §14 re-run (touched the web entrypoint's tool wiring): order-endpoint grep clean (only hit is `book-flight.test.ts`'s forbidden-pattern list), no `@duffel/api` import in `book-flight.ts`. `npm test` green; typecheck clean (root + web).
+
+**Note:** on the empty path the "Deciding" thinking-step stays an open (unfilled) circle since the run ends after ranking with no booking — pre-existing behavior for the no-book path, not introduced here.
+
+## 2026-07-21 — Budget moves out of the guardrails, into the prompt
+
+**Feature request (Alok):** Remove the total budget from the smart defaults so the user-defined budget in the prompt doesn't conflict with the smart default.
+
+**The conflict, precisely:** the deterministic gate (`rank_offers`) read budget *exclusively* from the Settings "Budget" field and ignored whatever budget the user typed in the prompt. So "AUS → JFK, under $650" with the guardrails at "No max" applied **no** budget at all — the prompt figure was silently dropped (and the constraint summary showed no budget, which is exactly the mismatch in the first demo run of the day). The Settings budget was a second, competing source of truth.
+
+**Decision (Alok):** budget lives in the **prompt**, parsed and fed to the deterministic gate — *not* softly handled by the model. Keeps the gate deterministic (a regex reads the number; the LLM never touches the numeric path) and preserves the budget-tolerance → escalation centerpiece.
+
+**What changed (all client-side — the server already takes `maxPrice` from the request body, so `run-orchestrator.ts` and the booking path are untouched; no §14 re-run needed):**
+- **New `web/src/lib/parse-budget.ts`** — `parseBudgetFromPrompt(prompt)`: `$`-anchored amount wins first ("$650", "$1,200"); else a keyword-anchored bare number ("under 650", "budget of 500 dollars"), guarded so trip details aren't misread — requires ≥ $50 and rejects a number immediately followed by a non-money unit (stops / h / passengers / …). Returns null when no budget is named (→ no cap). 11/11 sanity cases pass, incl. the adversarial "max 2 stops, under 12h total" → null.
+- **`web/src/hooks/useAgentRun.ts`** — removed `budget` from `ConstraintsState` / `DEFAULT_CONSTRAINTS` (the guardrails no longer carry one). `startNewRun` computes `parseBudgetFromPrompt(query)` and threads it into `toApiConstraints(c, budget)` and `summarizeConstraints(c, budget)`, both now taking budget as an explicit arg. `retry()` / the empty-state "Search again" re-parse from `lastQuery`, so they carry the prompt budget too.
+- **`web/src/components/settings/SettingsPanel.tsx`** — removed the Budget input row; replaced with a one-line note ("Set your budget right in your search — e.g. 'under $600'…"). The last-search tier-count hint is preserved, now standalone. Dropped the unused `Wallet` import.
+
+**Verified live** (browser, production Duffel + live model):
+- Guardrails panel: Budget field gone, replaced by the note. Dialog interactive tree confirms no budget input remains.
+- `"AUS to JFK …, one way, under $450"` (HITL) → gate summary reads **"nonstop, under $450, under 12h total, …"** (parsed from the prompt, not a Settings default); preferred pick $412 "Meets all your rules"; agent narrates "under your $450 cap … Everything above $450 is over budget." Prompt ↔ gate now agree.
+- `"… under $380"` (automated) → preferred $412 tagged **"Close — over budget, within tolerance"**; escalation fired with the gate's verbatim reason **"32.42 USD over budget (8.5%, within 20% tolerance)"**. The tolerance/escalation hero interaction works unchanged from a prompt-parsed budget.
+- Typecheck clean (root + web); oxlint clean (only pre-existing UI fast-refresh warnings).
+
+**Consequence worth noting:** the empty-state "Adjust rules → Search again" loop (built earlier today) now covers stops/duration/airline/cabin via Settings, but **not** budget — to change budget the user edits their prompt (then New search). That's inherent to budget being prompt-driven; the Settings note points users to the prompt for budget.
