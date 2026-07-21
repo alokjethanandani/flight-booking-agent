@@ -125,7 +125,7 @@ src/
 
 ## 13. Progress status
 
-Full session-by-session history, decisions, and open questions: `BUILD-LOG.md`. Summary as of 2026-07-14 (update this table at the end of each phase, per §3/§6):
+Full session-by-session history, decisions, and open questions: `BUILD-LOG.md`. Summary as of 2026-07-20 (update this table at the end of each phase, per §3/§6):
 
 | Phase | Status | Notes |
 |---|---|---|
@@ -133,7 +133,7 @@ Full session-by-session history, decisions, and open questions: `BUILD-LOG.md`. 
 | 1 — Real search | **Done** | `search_flights` confirmed against production Duffel (220 real offers, AUS→JFK round-trip); agent correctly declines to guess when the tool errors. |
 | 2 — Constraints + ranking | **Done** | Deterministic gate (`rank-offers.ts`) built and offline-tested (14/14); full live loop verified as part of Phase 3 below. |
 | 3 — Two modes (automated + HITL) | **Done** | `canUseTool` oversight gate built; 29/29 tests pass (gate + mock-boundary + oversight-routing), all routing branches covered offline. This is the design centerpiece per PRD §8. |
-| 4 — Thin UI + settings (v0/Lovable) | **Not started** | Next phase. Needs go-ahead per §3 before starting. |
+| 4 — Thin UI + settings (hand-built in-repo) | **Done** | Vite/React/Tailwind/shadcn SPA + Express/SSE bridge, wired to a Claude Design prototype's exact tokens/interaction model. Verified live in-browser against production Duffel + the live model: HITL happy path + reselection, `ask_user` free text, real empty state, automated auto-book, automated escalation (the hero interaction) with the decision reason rendered verbatim. §14 re-passed including the added server-level check; 29/29 tests. |
 | 5 — Demo + content | **Not started** | Screen recordings + digest + LinkedIn posts. |
 
 ## 14. Mock boundary verification
