@@ -16,7 +16,6 @@ export function ResultsSection({
   const [showAlternates, setShowAlternates] = useState(false)
   const [showRejected, setShowRejected] = useState(false)
   const bookable = [...offers.eligible, ...offers.tolerance]
-  const total = bookable.length + offers.rejected.length
 
   if (bookable.length === 0) {
     return (
@@ -42,7 +41,7 @@ export function ResultsSection({
       <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
         <Sparkles className="mt-0.5 size-3 flex-shrink-0" />
         <span>
-          Search returned {total} offers. Now applying your configured constraints:{' '}
+          Search returned {offers.searchedCount} offers. Now applying your configured constraints:{' '}
           <span className="font-medium text-foreground">{constraintSummary}</span>.
         </span>
       </div>

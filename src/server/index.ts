@@ -53,6 +53,7 @@ app.post('/api/run', (req: Request, res: Response) => {
       constraints: body.constraints,
       mode: body.mode,
       offline: body.offline === true,
+      hardAirline: typeof body.hardAirline === 'string' ? body.hardAirline : undefined,
     });
     res.json({ runId });
   } catch (err) {

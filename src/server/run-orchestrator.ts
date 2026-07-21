@@ -256,7 +256,7 @@ function buildSearchTool(active: ActiveRun, offline: boolean) {
   );
 }
 
-function buildRankOffersTool(active: ActiveRun, constraints: Constraints) {
+function buildRankOffersTool(active: ActiveRun, constraints: Constraints, hardAirline?: string) {
   return tool(
     'rank_offers',
     'Apply the user\'s configured constraints (from the Settings panel — you ' +
@@ -274,12 +274,23 @@ function buildRankOffersTool(active: ActiveRun, constraints: Constraints) {
         return { isError: true, content: [{ type: 'text' as const, text: message }] };
       }
 
-      const classified = classifyOffers(found.offers, constraints);
+      // Hard-airline requirement: pre-filter the searched offers to only the
+      // required carrier BEFORE the deterministic gate classifies them. This
+      // is the "filter out all other carriers" behavior, enforced as an input
+      // restriction — rank-offers.ts is untouched and still treats the airline
+      // as a soft signal for whatever set it is handed.
+      const wanted = hardAirline?.toUpperCase();
+      const offersForGate = wanted
+        ? found.offers.filter((o) => o.airlineIataCode?.toUpperCase() === wanted)
+        : found.offers;
+
+      const classified = classifyOffers(offersForGate, constraints);
       recordClassification(classified);
       active.sse.send('offers', {
         eligible: classified.eligible.map((e) => toOfferSummary(e)),
         tolerance: classified.tolerance.map((e) => toOfferSummary(e)),
         rejected: classified.rejected.map((e) => toOfferSummary(e)),
+        searchedCount: found.offers.length,
       } satisfies OffersPayload);
 
       const guidance =
@@ -373,7 +384,12 @@ function systemPromptFor(mode: Mode): string {
     'booking approval. The UI already shows the user how many offers came back ' +
     'and which constraints the deterministic gate is applying — do NOT restate ' +
     'the raw offer count or narrate the ranking/gate step. After ranking, go ' +
-    'straight to presenting your preferred pick and why it wins.';
+    'straight to presenting your preferred pick and why it wins. After ' +
+    'book_flight SUCCEEDS, the UI renders a full confirmation card (confirmation ' +
+    'number, PNR, route, times, fare, passengers) — so do NOT restate any of ' +
+    'those booking details in text. At most, give a brief one-sentence ' +
+    'acknowledgement (e.g. "You\'re all set — simulated booking, nothing was ' +
+    'charged."). Never repeat the confirmation table in prose.';
 
   if (mode === 'automated') {
     return (
@@ -442,7 +458,7 @@ async function runQueryLoop(
       version: '0.1.0',
       tools: [
         buildSearchTool(active, body.offline ?? false),
-        buildRankOffersTool(active, body.constraints),
+        buildRankOffersTool(active, body.constraints, body.hardAirline),
         buildBookFlightTool(active),
         buildAskUserTool(askAnswers),
       ],

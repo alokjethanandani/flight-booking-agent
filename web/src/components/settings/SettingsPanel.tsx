@@ -1,6 +1,7 @@
 import { SlidersHorizontal, ShieldCheck, Wallet, GitCommitHorizontal, Clock, Plane, Users, Armchair, Zap, UserCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Sheet,
   SheetContent,
@@ -179,8 +180,7 @@ export function SettingsPanel({
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Plane className="size-3.5" /> Preferred airline
-              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium">soft</span>
+              <Plane className="size-3.5" /> Airline
             </div>
             <Select value={constraints.preferredAirline} onValueChange={(v) => onConstraintsChange({ preferredAirline: v as string })}>
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
@@ -190,7 +190,19 @@ export function SettingsPanel({
                 ))}
               </SelectContent>
             </Select>
-            <div className="text-xs text-muted-foreground">A soft preference — never eliminates an offer, only breaks ties.</div>
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
+              <Checkbox
+                className="mt-0.5"
+                checked={constraints.airlineHard}
+                onCheckedChange={(checked) => onConstraintsChange({ airlineHard: checked })}
+              />
+              <span>Filter out all other airline carriers</span>
+            </label>
+            <div className="text-xs text-muted-foreground">
+              {constraints.airlineHard
+                ? `Hard requirement — only ${constraints.preferredAirline} flights will be considered.`
+                : 'Soft preference — never eliminates an offer, only breaks ties.'}
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">

@@ -217,7 +217,7 @@ Running log of decisions, progress, and open questions across sessions. Update a
 - Alok asked for two content/process artifacts, not product changes: (1) a LinkedIn "week 1" show-and-tell, (2) a learning roadmap for loop engineering + a two-model build-vs-verify workflow. No product scope, PRD, or guardrails touched.
 
 **Created**
-- `LinkedIn-Week1-Show-and-Tell.md` — a short feed teaser + a long-form article (learning-in-public voice), with `[IMAGE]`/`[VIDEO]` placeholders for Alok's recordings/moodboard. Covers PRD-first, sending the agent to research (design-system pick), the irreversibility → HITL decision, code-as-policy (the `canUseTool` gate) vs. prompt-as-policy, the build log as memory, and the honest verify gap.
+- `content/LinkedIn-Week1-Show-and-Tell.md` — a short feed teaser + a long-form article (learning-in-public voice), with `[IMAGE]`/`[VIDEO]` placeholders for Alok's recordings/moodboard. Covers PRD-first, sending the agent to research (design-system pick), the irreversibility → HITL decision, code-as-policy (the `canUseTool` gate) vs. prompt-as-policy, the build log as memory, and the honest verify gap.
 - `Learning-Roadmap-Loop-Engineering.md` — phased plan (A→E) to close the "generate faster than I can verify" gap: manual loop → separate verifier model → automated Ralph-style loop → commit/PR automation → retro. Includes grounded notes on the Ralph Wiggum loop and the generator-verifier pattern, a metrics table (false-pass rate = top metric), and open questions.
 
 **Accuracy corrections made before publishing (so Alok doesn't ship them wrong)**

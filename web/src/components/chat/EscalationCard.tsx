@@ -54,13 +54,13 @@ export function EscalationCard({
         </div>
       </div>
 
-      {!payload.isFreeText && recommended && (
-        <FlightResultCard
-          offer={recommended}
-          preferred
-          selectLabel="Book"
-          onSelect={!answered && recommendOption ? () => onAnswer(recommendOption.value) : undefined}
-        />
+      {!payload.isFreeText && recommended && <FlightResultCard offer={recommended} preferred />}
+
+      {!payload.isFreeText && !answered && recommendOption && declineOption && (
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => onAnswer(recommendOption.value)}>Book flight</Button>
+          <Button size="sm" variant="ghost" onClick={() => onAnswer(declineOption.value)}>Decline</Button>
+        </div>
       )}
 
       {!payload.isFreeText && alternates.length > 0 && (

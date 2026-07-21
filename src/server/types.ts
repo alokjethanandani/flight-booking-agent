@@ -15,6 +15,14 @@ export interface RunRequestBody {
   mode: Mode;
   /** Dev/demo escape hatch — swaps in demo-fixtures.ts instead of a live Duffel call. */
   offline?: boolean;
+  /**
+   * IATA code the user has marked as a HARD requirement. When set, the run
+   * orchestrator pre-filters the searched offers to only this carrier BEFORE
+   * the deterministic gate classifies them — so "filter out all other
+   * carriers" is enforced as an input restriction, NOT by changing
+   * rank-offers.ts (which keeps its soft-airline semantics, read-only).
+   */
+  hardAirline?: string;
 }
 
 /** One offer, shaped for a result/escalation card. Derived from EvaluatedOffer — display only. */
@@ -37,6 +45,10 @@ export interface OffersPayload {
   eligible: OfferSummaryForUI[];
   tolerance: OfferSummaryForUI[];
   rejected: OfferSummaryForUI[];
+  /** Raw offers the search returned, BEFORE any hard-airline pre-filter — so
+   *  the UI can honestly say "Search returned N offers" even when a hard
+   *  airline requirement narrowed what the gate then classified. */
+  searchedCount: number;
 }
 
 export interface EscalationOption {

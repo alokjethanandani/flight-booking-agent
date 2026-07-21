@@ -39,6 +39,9 @@ export interface ConstraintsState {
   maxStops: number
   durHours: number
   preferredAirline: string
+  /** When true, the airline is a HARD filter (only its offers are considered),
+   *  not the default soft tiebreaker. Default false = soft preference. */
+  airlineHard: boolean
   passengers: number
   cabin: 'economy' | 'premium_economy' | 'business' | 'first'
 }
@@ -48,6 +51,7 @@ export const DEFAULT_CONSTRAINTS: ConstraintsState = {
   maxStops: 0,
   durHours: 12,
   preferredAirline: 'Delta',
+  airlineHard: false,
   passengers: 1,
   cabin: 'economy',
 }
@@ -57,13 +61,20 @@ const AIRLINE_CODES: Record<string, string> = {
   JetBlue: 'B6', Alaska: 'AS', Frontier: 'F9', Spirit: 'NK',
 }
 
+function airlineCode(c: ConstraintsState): string | undefined {
+  return c.preferredAirline ? (AIRLINE_CODES[c.preferredAirline] ?? c.preferredAirline) : undefined
+}
+
 function toApiConstraints(c: ConstraintsState): Constraints {
   return {
     maxPrice: c.budget ?? undefined,
     currency: c.budget != null ? 'USD' : undefined,
     maxStops: c.maxStops,
     maxTotalDurationMinutes: c.durHours * 60,
-    preferredAirlines: c.preferredAirline ? [AIRLINE_CODES[c.preferredAirline] ?? c.preferredAirline] : undefined,
+    // The airline always goes to the gate as the soft signal (rank-offers.ts
+    // stays soft-only). A HARD requirement is enforced separately, as an input
+    // pre-filter on the server (see hardAirline in the run body).
+    preferredAirlines: airlineCode(c) ? [airlineCode(c) as string] : undefined,
   }
 }
 
@@ -84,7 +95,7 @@ export function summarizeConstraints(c: ConstraintsState): string {
   parts.push(c.maxStops === 0 ? 'nonstop' : `max ${c.maxStops} stop${c.maxStops > 1 ? 's' : ''}`)
   if (c.budget != null) parts.push(`under $${c.budget.toLocaleString('en-US')}`)
   parts.push(`under ${c.durHours}h total`)
-  if (c.preferredAirline) parts.push(`${c.preferredAirline} preferred`)
+  if (c.preferredAirline) parts.push(`${c.preferredAirline} ${c.airlineHard ? 'only' : 'preferred'}`)
   return parts.join(', ')
 }
 
@@ -163,6 +174,7 @@ export function useAgentRun() {
         tripRequest,
         constraints: toApiConstraints(constraints),
         mode,
+        hardAirline: constraints.airlineHard ? airlineCode(constraints) : undefined,
       })
       setRunId(newRunId)
 

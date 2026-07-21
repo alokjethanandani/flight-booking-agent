@@ -3,3 +3,6 @@ dist/
 .env
 *.log
 .DS_Store
+
+# Demo screen recordings — large binaries kept local, not in git history
+content/recordings/

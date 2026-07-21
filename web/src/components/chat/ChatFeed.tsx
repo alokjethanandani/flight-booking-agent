@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { FeedItem } from '@/hooks/useAgentRun'
+import type { OversightDecision } from '@/lib/api'
 import { UserBubble, AgentBubble, Note } from './MessageBubble'
 import { PlanPreviewCard } from './PlanPreviewCard'
 import { ThinkingSteps } from './ThinkingSteps'
@@ -15,6 +16,35 @@ import { TypingIndicator } from './TypingIndicator'
 const SELF_ANIMATING_OR_WAITING = new Set<FeedItem['kind']>([
   'thinking', 'escalation', 'confirmation', 'error',
 ])
+
+/**
+ * Agent-voice presentation of a gate decision for the chat feed. The verbatim
+ * `reason` stays in the OversightDecision (the authoritative trace, from the
+ * read-only oversight.ts); this is just the friendlier user-facing line.
+ */
+function friendlyDecision(d: OversightDecision): string {
+  const reselected = d.finalOfferId != null && d.finalOfferId !== d.requestedOfferId
+  switch (d.action) {
+    case 'hitl-approved':
+      return reselected
+        ? 'You picked a different option than I recommended.'
+        : 'You approved my recommendation.'
+    case 'hitl-declined':
+      return 'You declined — nothing was booked.'
+    case 'escalated-approved':
+      return 'You approved booking over budget.'
+    case 'escalated-declined':
+      return 'You declined the over-budget option — nothing was booked.'
+    case 'auto-book':
+      return 'I auto-booked this — it met every one of your rules.'
+    case 'blocked-rejected':
+      return "I couldn't book this — it breaks a hard rule."
+    case 'blocked-unknown':
+      return "I couldn't book this — it wasn't in the ranked results."
+    default:
+      return d.reason
+  }
+}
 
 export function ChatFeed({
   feed,
@@ -77,7 +107,7 @@ export function ChatFeed({
                 key={item.id}
                 className="self-start text-xs text-muted-foreground"
               >
-                {item.decision.outcome === 'allow' ? '✓' : '·'} {item.decision.reason}
+                {item.decision.outcome === 'allow' ? '✓' : '·'} {friendlyDecision(item.decision)}
               </div>
             )
           case 'confirmation':

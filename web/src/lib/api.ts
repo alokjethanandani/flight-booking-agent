@@ -36,6 +36,8 @@ export interface OffersPayload {
   eligible: OfferSummary[]
   tolerance: OfferSummary[]
   rejected: OfferSummary[]
+  /** Raw offers the search returned, before any hard-airline pre-filter. */
+  searchedCount: number
 }
 
 export interface EscalationOption {
@@ -127,6 +129,9 @@ export interface RunRequestBody {
   constraints: Constraints
   mode: Mode
   offline?: boolean
+  /** IATA code to HARD-filter offers to before the gate sees them. Unset =
+   *  the airline stays a soft preference (the default). */
+  hardAirline?: string
 }
 
 const API_DOWN_HINT =
