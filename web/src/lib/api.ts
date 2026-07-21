@@ -129,29 +129,46 @@ export interface RunRequestBody {
   offline?: boolean
 }
 
-export async function startRun(body: RunRequestBody): Promise<{ runId: string }> {
-  const res = await fetch('/api/run', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+const API_DOWN_HINT =
+  "Couldn't reach the FlightGenie server. It runs as a separate process from " +
+  'the web UI — make sure the full stack is up (run `npm run dev`, which starts ' +
+  'the API server and the web app together), not just the frontend.'
+
+/**
+ * POSTs JSON and returns the parsed body, translating the two failure modes
+ * that read as opaque "502"s into an actionable message: a totally-unreachable
+ * API (fetch rejects, or the Vite dev proxy has no target — ECONNREFUSED), and
+ * a gateway error status (502/503/504) from the proxy when the Express server
+ * isn't listening.
+ */
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  let res: Response
+  try {
+    res = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    // Network-level failure — no response at all (server down, proxy target unreachable).
+    throw new Error(API_DOWN_HINT)
+  }
+  if (res.status === 502 || res.status === 503 || res.status === 504) {
+    throw new Error(API_DOWN_HINT)
+  }
   if (!res.ok) {
     const err = (await res.json().catch(() => null)) as { error?: string } | null
-    throw new Error(err?.error ?? `POST /api/run failed (${res.status})`)
+    throw new Error(err?.error ?? `POST ${path} failed (${res.status})`)
   }
-  return res.json() as Promise<{ runId: string }>
+  return res.json() as Promise<T>
+}
+
+export function startRun(body: RunRequestBody): Promise<{ runId: string }> {
+  return postJson<{ runId: string }>('/api/run', body)
 }
 
 export async function submitDecision(runId: string, answer: string): Promise<void> {
-  const res = await fetch('/api/decision', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ runId, answer }),
-  })
-  if (!res.ok) {
-    const err = (await res.json().catch(() => null)) as { error?: string } | null
-    throw new Error(err?.error ?? `POST /api/decision failed (${res.status})`)
-  }
+  await postJson<{ ok: true }>('/api/decision', { runId, answer })
 }
 
 // --- SSE ----------------------------------------------------------------
