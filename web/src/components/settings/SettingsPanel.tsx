@@ -196,7 +196,9 @@ export function SettingsPanel({
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Armchair className="size-3.5" /> Cabin</div>
             <Select value={constraints.cabin} onValueChange={(v) => onConstraintsChange({ cabin: v as ConstraintsState['cabin'] })}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full">
+                <SelectValue>{(value) => CABINS.find((c) => c.value === value)?.label ?? String(value)}</SelectValue>
+              </SelectTrigger>
               <SelectContent>
                 {CABINS.map((c) => (
                   <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
@@ -211,7 +213,9 @@ export function SettingsPanel({
               value={String(constraints.passengers)}
               onValueChange={(v) => onConstraintsChange({ passengers: Number(v) })}
             >
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full">
+                <SelectValue>{(value) => `${value} ${value === '1' ? 'adult' : 'adults'}`}</SelectValue>
+              </SelectTrigger>
               <SelectContent>
                 {Array.from({ length: 9 }, (_, i) => i + 1).map((n) => (
                   <SelectItem key={n} value={String(n)}>{n} {n === 1 ? 'adult' : 'adults'}</SelectItem>
