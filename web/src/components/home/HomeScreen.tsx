@@ -74,7 +74,11 @@ export function HomeScreen({
           </div>
           <div className="flex items-center gap-2.5 text-foreground">
             <Plane className="size-3.5 text-muted-foreground" />
-            {constraints.preferredAirline} preferred <span className="text-muted-foreground">(soft)</span>
+            {constraints.airlineHard ? (
+              <>{constraints.preferredAirline} only <span className="text-muted-foreground">(filter)</span></>
+            ) : (
+              <>{constraints.preferredAirline} preferred <span className="text-muted-foreground">(soft)</span></>
+            )}
           </div>
         </div>
       </div>

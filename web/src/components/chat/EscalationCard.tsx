@@ -128,15 +128,7 @@ export function EscalationCard({
             <Send className="size-4" />
           </Button>
         </div>
-      ) : (
-        declineOption && (
-          <div>
-            <Button size="sm" variant="ghost" onClick={() => onAnswer(declineOption.value)}>
-              {declineOption.label}
-            </Button>
-          </div>
-        )
-      )}
+      ) : null /* Book / Decline are the inline action row above */}
     </div>
   )
 }
