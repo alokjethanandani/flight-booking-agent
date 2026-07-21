@@ -44,13 +44,13 @@ export function EscalationCard({
   return (
     <div
       role="status"
-      className="flex flex-col gap-3 rounded-xl border border-warning-muted-foreground/25 bg-warning-muted p-3.5 text-warning-muted-foreground"
+      className="flex flex-col gap-3 rounded-xl border-2 border-warning bg-card p-3.5 text-foreground"
     >
       <div className="flex items-start gap-2.5">
-        <CirclePause className="mt-0.5 size-4.5 flex-shrink-0" />
+        <CirclePause className="mt-0.5 size-4.5 flex-shrink-0 text-warning" />
         <div className="flex flex-col gap-1">
           <div className="text-sm font-semibold">{title}</div>
-          {detail && <div className="text-sm leading-normal">{detail}</div>}
+          {detail && <div className="text-sm leading-normal text-muted-foreground">{detail}</div>}
         </div>
       </div>
 
@@ -67,7 +67,7 @@ export function EscalationCard({
         <button
           type="button"
           onClick={() => setShowAlternates((v) => !v)}
-          className="flex items-center gap-1 self-start text-xs font-medium opacity-80"
+          className="flex items-center gap-1 self-start text-xs font-medium text-muted-foreground"
         >
           {showAlternates ? 'Hide' : `See ${alternates.length} other option${alternates.length > 1 ? 's' : ''}`}
           {showAlternates ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
@@ -94,7 +94,7 @@ export function EscalationCard({
         <button
           type="button"
           onClick={() => setShowPrompt((v) => !v)}
-          className="flex items-center gap-1 self-start text-xs opacity-70"
+          className="flex items-center gap-1 self-start text-xs text-muted-foreground"
         >
           View exact message
           {showPrompt ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
@@ -107,7 +107,7 @@ export function EscalationCard({
       )}
 
       {resolvedLabel ? (
-        <div className="text-xs font-medium opacity-80">You answered: {resolvedLabel}</div>
+        <div className="text-xs font-medium text-muted-foreground">You answered: {resolvedLabel}</div>
       ) : payload.isFreeText ? (
         <div className="flex gap-2">
           <Input

@@ -27,7 +27,7 @@ export type FeedItem =
   | { id: number; kind: 'assistant'; text: string }
   | { id: number; kind: 'plan'; mode: Mode; message: string }
   | { id: number; kind: 'thinking'; steps: ThinkingStep[]; done: boolean }
-  | { id: number; kind: 'offers'; offers: OffersPayload }
+  | { id: number; kind: 'offers'; offers: OffersPayload; constraintSummary: string }
   | { id: number; kind: 'escalation'; payload: EscalationPayload; resolvedAnswer?: string }
   | { id: number; kind: 'decision'; decision: OversightDecision }
   | { id: number; kind: 'confirmation'; result: BookingResult; cancelled?: boolean }
@@ -70,6 +70,22 @@ function toApiConstraints(c: ConstraintsState): Constraints {
 function buildTripRequest(query: string, c: ConstraintsState): string {
   const pax = `${c.passengers} ${c.passengers === 1 ? 'passenger' : 'passengers'}`
   return `${query.trim()} (${pax}, ${c.cabin.replace('_', ' ')} cabin.)`
+}
+
+/**
+ * A short, human list of the deterministic-gate constraints being applied —
+ * exactly the ones rank-offers.ts filters/scores on (stops, budget, duration,
+ * soft airline). Rendered deterministically from the run's own constraints,
+ * not paraphrased by the model, so it always matches what the gate actually
+ * enforced.
+ */
+export function summarizeConstraints(c: ConstraintsState): string {
+  const parts: string[] = []
+  parts.push(c.maxStops === 0 ? 'nonstop' : `max ${c.maxStops} stop${c.maxStops > 1 ? 's' : ''}`)
+  if (c.budget != null) parts.push(`under $${c.budget.toLocaleString('en-US')}`)
+  parts.push(`under ${c.durHours}h total`)
+  if (c.preferredAirline) parts.push(`${c.preferredAirline} preferred`)
+  return parts.join(', ')
 }
 
 export type Screen = 'home' | 'chat'
@@ -157,7 +173,15 @@ export function useAgentRun() {
         onPlanPreview: (p) => appendItem({ id: nextId(), kind: 'plan', mode: p.mode, message: p.message }),
         onOffers: (p) => {
           finishThinking()
-          appendItem({ id: nextId(), kind: 'offers', offers: p })
+          // `constraints` here is the exact set this run was started with (the
+          // same object passed to toApiConstraints above), so the summary
+          // always matches what the gate actually enforced.
+          appendItem({
+            id: nextId(),
+            kind: 'offers',
+            offers: p,
+            constraintSummary: summarizeConstraints(constraints),
+          })
         },
         onEscalation: (p) => {
           finishThinking()

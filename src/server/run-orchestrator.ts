@@ -370,7 +370,10 @@ function systemPromptFor(mode: Mode): string {
     'data or confirmations. If a booking is denied by the system, respect it ' +
     'and explain; if an offer expired, call search_flights again. Use ask_user ' +
     'only for missing trip details (e.g. an ambiguous city), never to get ' +
-    'booking approval.';
+    'booking approval. The UI already shows the user how many offers came back ' +
+    'and which constraints the deterministic gate is applying — do NOT restate ' +
+    'the raw offer count or narrate the ranking/gate step. After ranking, go ' +
+    'straight to presenting your preferred pick and why it wins.';
 
   if (mode === 'automated') {
     return (

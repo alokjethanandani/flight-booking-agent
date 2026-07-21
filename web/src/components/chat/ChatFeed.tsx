@@ -54,7 +54,14 @@ export function ChatFeed({
           case 'thinking':
             return <ThinkingSteps key={item.id} steps={item.steps} />
           case 'offers':
-            return <ResultsSection key={item.id} offers={item.offers} onRelax={onRelax} />
+            return (
+              <ResultsSection
+                key={item.id}
+                offers={item.offers}
+                constraintSummary={item.constraintSummary}
+                onRelax={onRelax}
+              />
+            )
           case 'escalation':
             return (
               <EscalationCard
