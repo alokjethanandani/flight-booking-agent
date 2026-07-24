@@ -6,6 +6,14 @@
 
 ---
 
+## Purpose
+
+This brief specifies the **behavior** of the Phase 4 UI: the flows, states, and — above all — the oversight interaction model (when the agent acts on its own vs. pauses and asks). What it exists to prove: a human can *see, before it happens*, when the agent will act vs. ask, and can trust or override that boundary. Every screen serves that.
+
+**Definition of done and risks live upstream, by design.** This is a behavior brief, not a spec: the done-bar is owned by `Mini-PRD-Flight-Booking-Agent.md` §2 and `HLD-Phase4-Web-UI.md` §12; the risk register by PRD §9 and HLD §11. This brief does not restate them.
+
+---
+
 ## 0. Read this first — hard guardrails (non-negotiable)
 
 This is a **screen-recordable POC**, not a product. Three rules bound every design decision:
