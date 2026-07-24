@@ -1,0 +1,16 @@
+{
+  "$comment": "Project-shared settings. PostToolUse hook runs the deterministic prd-lint gate whenever a PRD/spec/HLD/brief markdown file is written or edited. On a structural error the hook exits 2, which blocks and feeds the reason back to the agent so it fixes the doc before proceeding. Non-brief files are a silent no-op. This is the 100%-of-the-time layer beneath the prd-interviewer and plan-critic agents.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/tools/prd-lint.mjs\" --hook"
+          }
+        ]
+      }
+    ]
+  }
+}
