@@ -36,3 +36,7 @@ export function isoTime(iso: string): string {
   const p = isoParts(iso)
   return p ? `${p.hh}:${p.mm}` : ''
 }
+
+export function legLabel(leg: { from: string | null; to: string | null; departingAt: string; arrivingAt: string }): string {
+  return `${isoDate(leg.departingAt)} · ${leg.from ?? '?'} ${isoTime(leg.departingAt)} → ${leg.to ?? '?'} ${isoTime(leg.arrivingAt)}`
+}

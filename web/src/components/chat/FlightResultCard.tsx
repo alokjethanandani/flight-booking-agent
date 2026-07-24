@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { OfferSummary } from '@/lib/api'
-import { formatMoney, formatDuration, formatStops } from '@/lib/format'
+import { formatMoney, formatDuration, formatStops, legLabel } from '@/lib/format'
 import { TIER_META } from './tierMeta'
 
 export function FlightResultCard({
@@ -21,6 +21,7 @@ export function FlightResultCard({
   const [showReasons, setShowReasons] = useState(false)
   const meta = TIER_META[offer.tier]
   const bookable = offer.tier !== 'rejected'
+  const showTimes = preferred || offer.tier === 'eligible'
 
   return (
     <div
@@ -52,6 +53,16 @@ export function FlightResultCard({
         <span>·</span>
         <span>{formatDuration(offer.totalDurationMinutes)}</span>
       </div>
+      {showTimes && offer.slices.length > 0 && (
+        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+          {offer.slices.map((slice, i) => (
+            <div key={i}>
+              <span className="font-medium text-foreground">{offer.slices.length > 1 ? (i === 0 ? 'Outbound: ' : 'Return: ') : ''}</span>
+              {legLabel(slice)}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Badge variant={meta.variant}>{meta.label}</Badge>
         {offer.reasons.length > 0 && (

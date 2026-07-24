@@ -2,7 +2,7 @@ import { Check, Info, ClockAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { BookingResult } from '@/lib/api'
-import { formatMoney, formatStops, isoDate, isoTime } from '@/lib/format'
+import { formatMoney, formatStops, legLabel } from '@/lib/format'
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -11,10 +11,6 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
       <span className="text-right text-sm text-foreground">{value}</span>
     </div>
   )
-}
-
-function legLabel(leg: { from: string | null; to: string | null; departingAt: string; arrivingAt: string }): string {
-  return `${isoDate(leg.departingAt)} · ${leg.from ?? '?'} ${isoTime(leg.departingAt)} → ${leg.to ?? '?'} ${isoTime(leg.arrivingAt)}`
 }
 
 export function ConfirmationCard({

@@ -18,6 +18,13 @@ export interface Constraints {
   budgetTolerancePct?: number
 }
 
+export interface OfferSliceSummary {
+  from: string | null
+  to: string | null
+  departingAt: string
+  arrivingAt: string
+}
+
 export interface OfferSummary {
   offerId: string
   tier: OfferTier
@@ -30,6 +37,7 @@ export interface OfferSummary {
   maxStopsAcrossSlices: number
   reasons: string[]
   budgetDetail: string
+  slices: OfferSliceSummary[]
 }
 
 export interface OffersPayload {

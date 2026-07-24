@@ -157,6 +157,12 @@ function toOfferSummary(e: EvaluatedOffer, number?: number): OfferSummaryForUI {
     maxStopsAcrossSlices: e.offer.maxStopsAcrossSlices,
     reasons: e.reasons,
     budgetDetail: e.budget.detail,
+    slices: e.offer.slices.map((s) => ({
+      from: s.originIataCode,
+      to: s.destinationIataCode,
+      departingAt: s.departingAt,
+      arrivingAt: s.arrivingAt,
+    })),
   };
 }
 

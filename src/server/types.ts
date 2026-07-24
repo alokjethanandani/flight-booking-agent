@@ -25,6 +25,14 @@ export interface RunRequestBody {
   hardAirline?: string;
 }
 
+/** One slice's departure/arrival, for a result card's per-leg detail row. */
+export interface OfferSliceSummary {
+  from: string | null;
+  to: string | null;
+  departingAt: string;
+  arrivingAt: string;
+}
+
 /** One offer, shaped for a result/escalation card. Derived from EvaluatedOffer — display only. */
 export interface OfferSummaryForUI {
   offerId: string;
@@ -39,6 +47,8 @@ export interface OfferSummaryForUI {
   maxStopsAcrossSlices: number;
   reasons: string[];
   budgetDetail: string;
+  /** One entry per slice (outbound, and return if round-trip). */
+  slices: OfferSliceSummary[];
 }
 
 export interface OffersPayload {
