@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FlightGenie — Logged-In Vision Prototype</title>
+<title>FlightGenie: logged-in concept</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 <style>
@@ -147,8 +147,8 @@
 </head>
 <body>
   <div class="head">
-    <h1>Flight<span class="g">Genie</span> — Logged-In Vision</h1>
-    <p>Where the app goes after the POC: the account as a <b>trust-configuration surface</b>. Stored preferences become the guardrails that make automation safe. Tap the nav; toggle theme. Mockup only — nothing functional.</p>
+    <h1>Flight<span class="g">Genie</span>: logged-in concept</h1>
+    <p>This static concept explores <b>saved preferences and booking permission</b>. All travelers, cards, trips, and activity are fictional. Navigation and controls change the display only.</p>
     <div class="controls">
       <button class="ctl on" id="lightBtn" onclick="setTheme('light')">Light</button>
       <button class="ctl" id="darkBtn" onclick="setTheme('dark')">Dark</button>
@@ -176,7 +176,7 @@
               <span class="pill success"><span class="dot success"></span>Confirmed</span>
             </div>
             <div class="fw800 fs18 mt12">Austin → San Francisco</div>
-            <div class="muted fs13 mt4">Sep 14 – Sep 18 · United · 1 stop · Seat 14C (aisle)</div>
+            <div class="muted fs13 mt4">Sep 14 to Sep 18 · United · 1 stop · Seat 14C (aisle)</div>
           </div>
 
           <div class="section-label">Active automation</div>
@@ -196,8 +196,8 @@
             <div class="feeditem">
               <span class="dot warning" style="margin-top:5px"></span>
               <div class="grow">
-                <div class="fw700 fs13">Paused — fare $610 over your cap</div>
-                <div class="muted fs12 mt4">AUS → NYC · waiting for your call · 5 days ago</div>
+                <div class="fw700 fs13">Approval needed. Fare $610 exceeds your cap</div>
+                <div class="muted fs12 mt4">AUS → NYC · waiting for your approval · 5 days ago</div>
                 <div class="acts mt8"><a href="#">Review</a></div>
               </div>
             </div>
@@ -212,7 +212,7 @@
         <div class="topbar"><div class="avatar"></div><div class="brand">Travel profile</div><div class="iconbtn">&#9998;</div></div>
         <div class="scroll">
           <div class="h2">Preferences</div>
-          <div class="sub">Low-stakes — edits save instantly, no confirmation.</div>
+          <div class="sub">Search preferences apply without granting booking permission.</div>
 
           <div class="section-label">Preferred airlines <span class="muted" style="text-transform:none;font-weight:600">· soft preference</span></div>
           <div class="card">
@@ -237,7 +237,7 @@
         <div class="topbar"><div class="avatar"></div><div class="brand">Traveler &amp; IDs</div><div class="iconbtn">&#9998;</div></div>
         <div class="scroll">
           <div class="h2">Your travel identity</div>
-          <div class="sub">Medium-stakes — stored securely, confirmed on edit.</div>
+          <div class="sub">Sample identity details. This prototype stores no real documents.</div>
 
           <div class="section-label">Loyalty programs</div>
           <div class="card">
@@ -264,13 +264,13 @@
         <div class="topbar"><div class="avatar"></div><div class="brand">Payment</div><div class="iconbtn">+</div></div>
         <div class="scroll">
           <div class="h2">Cards &amp; caps</div>
-          <div class="sub">Highest-stakes. Every card carries a spend cap — that ceiling is what makes auto-booking safe.</div>
+          <div class="sub">Sample cards and spend caps. Each booking rule must state its conditions and approval fallback.</div>
 
           <div class="card">
             <div class="row sb"><div class="fw800 fs18">Visa ••42</div><span class="pill success">Default</span></div>
             <div class="muted fs13 mt4">Expires 09/28 · Personal</div>
             <div class="cap mt12"><span>Auto-book up to</span><span>$400 / trip</span></div>
-            <div class="muted fs12 mt8">Unlocks: <b style="color:var(--fg)">AUS→SFO</b>, <b style="color:var(--fg)">AUS→NYC</b> rules</div>
+            <div class="muted fs12 mt8">Linked rules: <b style="color:var(--fg)">AUS→SFO</b>, <b style="color:var(--fg)">AUS→NYC</b> rules</div>
           </div>
 
           <div class="card">
@@ -292,16 +292,16 @@
         <div class="topbar"><div class="avatar"></div><div class="brand">Automation &amp; trust</div><div class="iconbtn">&#9881;</div></div>
         <div class="scroll">
           <div class="h2">When may I act?</div>
-          <div class="sub">Every rule is a bounded grant of autonomy — a spend cap and an "otherwise ask" fallback.</div>
+          <div class="sub">Each rule defines a route, conditions, spend cap, and approval fallback.</div>
 
           <div class="section-label">Default mode</div>
           <div class="seg" style="width:100%;display:flex"><button style="flex:1">Automatic</button><button class="on" style="flex:1">Ask me first (HITL)</button></div>
-          <div class="muted fs12 mt8">New routes ask first. You graduate specific routes to automatic below.</div>
+          <div class="muted fs12 mt8">New routes require approval. Enable automatic booking for a specific route below.</div>
 
           <div class="section-label">Progressive trust</div>
           <div class="promo">
             <div class="tag">Suggested</div>
-            <div class="fw700 fs13 mt8" style="line-height:1.5">You've picked the same <b>AUS → SFO</b> pattern 3 times. Want me to auto-book it under <b>$350</b> next time?</div>
+            <div class="fw700 fs13 mt8" style="line-height:1.5">You've chosen this <b>AUS → SFO</b> pattern 3 times. Create an automatic-booking rule under <b>$350</b>?</div>
             <div class="rule-foot" style="display:flex;gap:8px;margin-top:12px">
               <button class="btn mini" style="flex:1" onclick="createRule()">Create rule</button>
               <button class="btn mini ghost" style="flex:1" onclick="this.closest('.promo').style.display='none'">Not now</button>

@@ -1,144 +1,144 @@
-# UX / Interaction Brief — Phase 4 UI (FlightGenie)
+# Interaction brief: FlightGenie Phase 4
 
-**Owner:** Alok · **For:** Claude Design (AI designers) · **Drafted:** 2026-07-14 · **Status:** For design
-**Companion doc:** `prompts/design-system-prompt.md` (tokens + components — the *system* layer). This brief is the *behavior* layer: flows, states, and the oversight interaction model. Read both.
-**Source of truth:** `Mini-PRD-Flight-Booking-Agent.md`. Where this brief and the PRD disagree, the PRD wins.
+Owner: Alok Jethanandani. Drafted: July 14, 2026. Status: Design intent with implementation notes.
 
----
+Source of truth: [product brief](Mini-PRD-Flight-Booking-Agent.md) for scope. The [technical design](HLD-Phase4-Web-UI.md) records the current browser contract. Use the [design-system prompt](prompts/design-system-prompt.md) for tokens and components.
 
-## Purpose
+## Purpose, success criteria, and risks
 
-This brief specifies the **behavior** of the Phase 4 UI: the flows, states, and — above all — the oversight interaction model (when the agent acts on its own vs. pauses and asks). What it exists to prove: a human can *see, before it happens*, when the agent will act vs. ask, and can trust or override that boundary. Every screen serves that.
+Make the agent's booking permission visible before it acts. Each approval request should explain the exception and give the user a clear next step.
 
-**Definition of done and risks live upstream, by design.** This is a behavior brief, not a spec: the done-bar is owned by `Mini-PRD-Flight-Booking-Agent.md` §2 and `HLD-Phase4-Web-UI.md` §12; the risk register by PRD §9 and HLD §11. This brief does not restate them.
+This brief records the intended interactions. Implementation notes distinguish working behavior from proposals. Success criteria and risks live in product brief §2 and §9, and technical design §11 and §12.
 
----
+## 0. Scope and guardrails
 
-## 0. Read this first — hard guardrails (non-negotiable)
+Booking is simulated in every mode. The receipt uses a fabricated reference and PNR. It must state that no ticket was issued and no card was charged.
 
-This is a **screen-recordable POC**, not a product. Three rules bound every design decision:
+v1 has no accounts, authentication, stored payment, or durable preferences. Keep the interface focused on trip intake, classification, approval, and confirmation.
 
-1. **Booking is mocked.** No real payment, no real ticket, no PNR. The confirmation is fabricated (`MOCK-` ref, fake 6-char code, `mock: true`). The UI must be *honest* that it is simulated — see §A7.
-2. **No accounts, no auth, no stored payment.** v1 is logged-out and session-only. Do **not** design a signup wall, a login screen, or a saved-card vault. (Account model is documented in Part B as vision — not built.)
-3. **Keep it thin.** The star is the *oversight model* (when the agent acts vs. asks), not visual richness or feature breadth. PRD §9 names "over-built UI steals focus" as a live risk. When in doubt, cut.
-
-**What this artifact exists to prove:** that a human can *see, before it happens*, when the agent will act on its own vs. pause and ask — and can trust or override that boundary. Every screen serves that.
-
----
-
-## PART A — V1 DEMO SCOPE (BUILD THIS)
+## Part A: v1 interactions
 
 ### A1. Screen inventory
 
-One page, no routing. Three persistent regions + two overlays:
+Use one page without routing. The implemented app places results and approval cards in the chat feed.
 
-| Region | Role | Mobile | Laptop |
-|---|---|---|---|
-| **Chat thread** | Natural-language intake + agent narration of the loop | Full-width, stacked above results | Left pane |
-| **Results area** | Preferred + secondary flight cards | Stacks under chat | Right pane |
-| **Settings** (mode + constraints) | The control surface / guardrails | Sheet/drawer | Side panel or dialog |
-| **Escalation callout** (overlay) | "I paused because…" | Inline card in thread | Inline card in thread |
-| **Mock confirmation** (overlay) | Simulated booking receipt | Dialog / full-screen sheet | Dialog |
+| Surface | Responsibility |
+|---|---|
+| Trip intake | Accept the user's route, dates, and budget |
+| Chat feed | Show questions, progress, results, and decisions |
+| Settings | Set mode, stops, duration, airline, cabin, and passengers |
+| Approval card | Show the proposed offer and await a decision |
+| Confirmation | Show the simulated receipt |
 
-Defer all responsive token/breakpoint detail to `prompts/design-system-prompt.md`. Don't re-specify it here.
+Use the design system's responsive rules. The original split-pane layout remains an option rather than an implemented requirement.
 
-### A2. The oversight model (the centerpiece — spend your design budget here)
+### A2. Oversight model
 
-The agent already emits a structured decision record per run. Build the UI to render it directly. Shape (from `src/lib/oversight.ts`, `OversightDecision`):
+Render the core's decision data. The browser carries questions and answers while the server-side gate owns booking permission.
 
-```
-{ mode, tier, outcome, action, reason, humanQnA?, reselection? }
-  mode:    'automated' | 'hitl'
-  tier:    'eligible' | 'tolerance' | 'rejected' | 'unknown'   // per offer
-  outcome: 'allow' | 'escalate' | 'deny' | 'pause'
-  action:  what the agent did / is about to do
-  reason:  human-readable "why"
-```
+The authoritative `OversightDecision` type includes mode, tier, outcome, action, and reason. Final outcomes are `allow` and `deny`. An `escalation` event represents a pending human decision.
 
-Expose it via `getDecisionLog()`. **The UI's job is to make `outcome` visible and legible — ideally before it happens.**
+#### A2a. Pre-action plan
 
-**A2a. Pre-action plan preview (the differentiator).**
-Before the agent acts, show what it *will* do without asking. A short banner at the top of the results area, keyed off mode:
-- Automated: *"I'll auto-book the best option that meets all your rules. If nothing qualifies, I'll stop and ask."*
-- HITL: *"I'll find options and rank them — you make every booking call."*
-The boundary must be visible *before* it's crossed, not explained after. This one pattern is what separates "designed for oversight" from "a chatbot with buttons."
+Show the approval policy before tool execution:
 
-**A2b. Mode toggle.**
-A `switch`/segmented control in Settings with a one-line inline explanation of each mode (copy above). Changing mode mid-session is allowed (§A2d). Default = **HITL** (see §A2e).
+- Automated: "I'll simulate booking when an option meets your configured rules. Over-budget options within tolerance need your approval."
+- Manual review: "I'll find and rank flights. Every simulated booking needs your approval."
 
-**A2c. Escalation callout** — the "I stopped because X" surface. Fires when `outcome = escalate` (automated mode, best option is `tolerance` tier) or `deny`.
-- **Tone:** attention-needed, *not* a hard error. Use the `warning` token, not `destructive`, for escalations; reserve `destructive` for `deny`/hard-broken constraints.
-- **Anatomy:** icon + one-line reason (`"I paused — this breaks your rule: max 1 stop"`) + the offending constraint named explicitly + **action row**.
-- **Action row (required):** `Approve anyway` · `Adjust the constraint` (deep-links to the relevant field in Settings) · `See alternatives`. Never a dead end.
-- Maps to the SDK `canUseTool` gate — the pause is a runtime guarantee, so the callout is always truthful.
+Design criterion: the user can tell what requires approval before a booking attempt.
 
-**A2d. Mode switching mid-task.** If the user flips HITL→automated while a decision is pending, don't silently auto-book the pending item. Re-present it under the new mode's rules and require one explicit confirmation. Show a small "mode changed — re-evaluating" note in the thread.
+#### A2b. Mode control
 
-**A2e. Default = HITL.** New/session-first users start in human-in-the-loop. Rationale for the designer: trust is earned, not granted; and HITL surfaces the oversight/escalation moments every run (that's the demo payoff). Automated is one toggle away — sequence it, don't hide it.
+Offer manual review and automatic booking in Settings. Explain each mode beside the control. Both modes block rejected offers.
+
+#### A2c. Approval and escalation
+
+Use warning styling for an over-budget approval request. Use alert styling for a hard rejection. Name the relevant constraint and the proposed offer.
+
+The intended action row supports approval, adjustment of the relevant constraint, and alternatives. The current card supports approval, decline, and manual-review reselection. Direct links to individual settings remain design intent.
+
+A hard rejection cannot be approved. The user must change the relevant constraint and search again.
+
+#### A2d. Mode changes during a run
+
+The implemented mode change applies to the next search. Show that message while a run is active.
+
+The earlier proposal re-presented a pending decision under the new mode. It is not implemented. Do not describe a pending approval as automatically re-evaluated.
+
+#### A2e. Default mode
+
+Start each new session in manual review. I chose this default so users can review the recommendation before granting automatic booking permission.
 
 ### A3. Flight result cards
 
-- **Preferred pick** gets a distinct, elevated treatment (badge + border/emphasis) vs. secondary options. One preferred, N secondaries.
-- **Constraint-status badge** on every card, driven by `tier` → token:
-  - `eligible` → **success** ("Meets all your rules")
-  - `tolerance` → **warning** ("Close — slightly over budget")
-  - `rejected` → **destructive** ("Breaks: max 1 stop") — and de-emphasize; a rejected offer is not presented as bookable.
-- **"Why this rank"** via progressive disclosure: collapsed badge → expand → the agent's `reason`. Don't dump reasoning inline; let the user pull it.
-- Card content: airline, times, stops, duration, price (per `prompts/design-system-prompt.md` flight-card spec).
-- **Confidence signal:** when the agent's top pick is a close call (e.g., preferred and #2 are near-tied), surface a light "close call" note so a confident pick and a tentative one don't look identical.
+Show airline, price, currency, stops, total duration, and itinerary details where available. Use text labels alongside semantic color.
 
-### A4. Constraints panel — guardrails, not a form
+| Tier | Treatment | Label |
+|---|---|---|
+| Eligible | Success | Meets your configured rules |
+| Tolerance | Warning | Over budget. Approval required |
+| Rejected | Alert and reduced emphasis | Does not meet a required rule |
 
-This is the "safe by construction" story made tangible (PRD §8). Design constraints as *guardrails the user sets*, not a settings dump:
-- Fields: budget, max stops, max total duration, preferred airline(s), cabin, passengers.
-- **Impact hint on edit:** when a constraint tightens, show its effect — *"1 stop max removes 4 of 6 options."* Makes the guardrail→outcome link visible.
-- Preferred airline is a **soft** preference (per PRD) — label it so, since automated mode may auto-book a non-preferred eligible offer. Don't imply it's a hard filter.
+Keep the preferred offer visually distinct. Current result cards follow the classifier's default sort, while the approval card follows the model's requested offer. These can differ.
 
-### A5. Agent-loop legibility — thinking states, not a spinner
+"Why this rank" currently reveals classification reasons. The model's recommendation explanation appears in the chat. A close-call signal remains design intent.
 
-Duffel search + model latency is real (seconds). The loop being visible *is* the agent literacy you're demonstrating. Instead of one spinner, narrate the loop in the thread:
-`Searching flights…` → `Ranking against your rules…` → `Deciding…` → result.
-Each step is a lightweight state (skeleton on cards, stepper in thread). This turns dead wait time into proof the agent is reasoning, not guessing.
+### A4. Constraints panel
 
-### A6. Failure & empty states
+The budget comes from the trip request. Settings hold maximum stops, total duration, airline preference, cabin, and passenger count.
 
-- **No offers meet constraints:** not a dead end — offer to relax a specific constraint (name which one is binding) or re-search dates.
-- **Duffel returns nothing / search error:** honest "couldn't reach live fares" with retry.
-- **Offer expired** (already built in Phase 3 — `offer_expired`): surface as an *oversight moment*, not an error — *"That fare expired while we talked. Re-searching…"* This is a cheap, realistic trust beat; use it.
+Explain that round-trip duration sums both flight legs. Preferred airline is soft unless the user selects "Only use this airline". That option filters other carriers on the server.
 
-### A7. Mock-booking confirmation (honest simulation)
+The panel shows the last search's tier counts. Live impact hints during constraint editing remain design intent. Do not imply that a pending run uses edited values.
 
-The confirmation is fabricated. Design it to be *unmistakably simulated* without breaking the flow:
-- Render the receipt (route, times, price, fake ref) so the flow feels complete.
-- Persistent, clearly-styled **"Simulated booking — no ticket was issued, no card was charged"** marker (use `info`/muted, not hidden in fine print).
-- Include a **cancel/undo** affordance even though it's mocked — signals the reversibility value in a POC where nothing is truly reversible.
+### A5. Progress states
 
-### A8. Resumability (in-session)
+Show "Searching flights", "Checking your rules", and "Reviewing options" as tool events arrive. These states describe execution progress. They do not expose the model's internal reasoning.
 
-When the agent pauses in HITL, the pending decision must not get lost in scroll. Provide a lightweight **"1 decision needs you"** indicator (badge on results area / sticky pill) that scrolls to the escalation callout. This is the in-session, no-infra version of the async handoff described in Part B.
+### A6. Failure and empty states
 
-### A9. Session preferences (no auth)
+| State | Response |
+|---|---|
+| No bookable offers | Show the active constraints and offer rule adjustment or another search |
+| Provider search error | Describe the failed search and provide retry |
+| Expired fare | Explain that the fare expired and a new search is required |
+| Missing trip information | Ask a specific question and wait for an answer |
 
-Hold mode + constraint choices in session/local state so they *behave* persistent within one recording. No login, no server, no account. Do not design an auth flow to enable this.
+Do not promise a completed retry before it happens. Automatic recovery depends on subsequent agent behavior.
 
-### A10. Interaction-state coverage
+### A7. Simulated confirmation
 
-Every interactive component ships all states: default · hover · focus · disabled · loading · error (per `prompts/design-system-prompt.md`). This brief adds one product-specific state set — **the oversight outcomes** (`allow` / `escalate` / `pause` / `deny`) must each have a distinct, legible visual treatment wired to the semantic tokens.
+Show route, fare, itinerary, passenger count, and fabricated reference. Label the PNR as simulated.
 
----
+Keep this disclosure visible: "Simulated booking. No ticket was issued and no card was charged."
 
-## PART B — PRODUCT VISION (DO NOT BUILD IN v1)
+A cancel control updates the displayed simulated receipt. It does not represent a real cancellation policy or refund guarantee.
 
-Documented for the portfolio/interview narrative and to keep the AI designer from accidentally scoping these into the thin demo. **None of this ships in v1.** All are PRD §3 non-goals or beyond.
+### A8. Pending-decision visibility
 
-- **Account model + persistent preferences.** Where stored mode/airline/cabin/seat prefs live across sessions, and where the *trust-calibration* narrative belongs. This is the strategically interesting extension — preferences are the trust-boundary inputs. (v1 fakes persistence in session state.)
-- **Progressive / earned trust.** Start HITL; after N confirmed bookings or per-route, the agent *offers* to automate: *"I've picked what you'd pick 3 times running — auto-book under $X on this route?"* Trust calibration made literal. Requires the account model above, so vision-only.
-- **Async multichannel handoff.** SMS / WhatsApp / email to resume a paused decision away from the browser. The in-session version (§A8) is the only part built in v1.
-- **Bookmarking flights** for comparison shopping across sessions.
-- **CUT — stored card / payment vault.** Explicitly not designed, not even mocked. Booking is simulated; simulating a card vault signals PCI/liability and contradicts the "no financial actions, ever" guardrail. Do not include in vision *or* demo.
+Design intent: keep a pending approval easy to find with a "1 decision needs you" indicator that returns to the card. The current app shows the approval inline without a separate sticky indicator.
 
----
+### A9. Session preferences
+
+Keep mode, constraints, and feed in React state. Reload resets them. Theme preference uses `sessionStorage`. No account is required.
+
+### A10. Component states
+
+Cover default, hover, focus, disabled, loading, and error states where relevant. Make allowed actions, pending approvals, and blocked offers distinguishable through text as well as color.
+
+## Part B: product vision beyond v1
+
+The [logged-in vision](Vision-Brief-Logged-In.md) explores persistent preferences and standing rules. These are static concepts outside the working agent.
+
+| Concept | Product question |
+|---|---|
+| Persistent preferences | Which inputs should carry across trips? |
+| User-approved automation suggestions | When should repeated choices prompt a scoped rule? |
+| Multichannel approval | How could a user resume a decision away from the browser? |
+| Bookmarks | How could a traveler compare offers across sessions? |
+
+Payment and identity concepts belong only in the separate static vision. Do not add a payment vault, real credentials, or account flows to v1.
 
 ## Resolved decisions
-- **App name:** **FlightGenie** — confirmed for demo and portfolio.
-- **Hero interaction:** the pre-action plan preview (§A2a) is the **hero interaction for the case study** — prototype it to the highest fidelity and build the demo screens to showcase it. It's the clearest single expression of "designed for oversight."
+
+The app name is FlightGenie. The pre-action plan is the primary interaction for the case study because it states permission before execution.

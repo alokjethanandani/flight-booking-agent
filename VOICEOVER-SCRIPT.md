@@ -1,84 +1,68 @@
-# FlightGenie Demo Voiceover Script (Draft v1)
+# FlightGenie demo narration
 
-Two clips, two scripts. Timestamps are anchor points matched to what's on screen in each
-video — not rigid cuts. ElevenLabs generation won't land on these to the frame, so treat
-them as pacing guides: read a line, let the beat land, move to the next.
+Status: Draft for two existing clips. Audience: product, design, and engineering reviewers. Timestamps follow the original recording plan and need a playback check after narration changes.
 
-Assumption baked into the tone: this is aimed at a design/PM/agentic-AI audience (LinkedIn,
-portfolio), not consumer flight-shopper marketing. The point of the reel is the trust
-boundary — automated vs. human-in-the-loop — since that's the actual thesis of the project
-(PRD §8). Flag if you want it pitched more consumer-facing instead.
+Counts and fares refer to the recorded take. Confirm them against the final footage. Keep model interpretation distinct from the budget, stops, and duration checks enforced in code.
 
----
-
-## Clip 1 — Human-in-the-Loop (58s)
+## Clip 1: manual review, 58 seconds
 
 **[0:00]**
-This is manual-review mode. The agent can search and rank flights — but every booking still needs my sign-off.
+In manual review, the agent searches and ranks flights. Every simulated booking needs my approval.
 
 **[0:08]**
-I ask for a round trip, Austin to JFK, nonstop, under six-fifty.
+I request a round trip from Austin to JFK, nonstop, under six-fifty.
 
 **[0:16]**
-Watch what happens next. The request is ambiguous — which Saturday, and there's no return date — so instead of guessing, it stops and asks.
+The request leaves the dates unclear. The agent asks which Saturday I mean and when I want to return.
 
 **[0:24]**
-I answer once, and it moves.
+I clarify the dates, and the search continues.
 
 **[0:28]**
-Every offer gets run through a hard rules gate — not a judgment call, a deterministic check against my constraints.
+Code checks each offer against the configured budget, stops, and total duration.
 
 **[0:36]**
-Two hundred twenty-six offers came back. The ones that broke a rule, or blew the budget, are labeled and visible — nothing gets buried.
+This recording returned two hundred twenty-six offers. I can inspect the eligible, over-budget, and rejected results.
 
 **[0:46]**
-Its top pick: lowest fare, shortest total travel time, best departure window — and it tells me exactly why.
+The agent recommends a flight and explains the tradeoffs.
 
 **[0:52]**
-Then it stops. The booking sits right here, waiting on my tap — because in this mode, I make the call, every time.
+It waits for my approval before booking. The confirmation is simulated. No ticket is issued and no card is charged.
 
----
-
-## Clip 2 — Automated Mode (52s)
+## Clip 2: automated mode, 52 seconds
 
 **[0:00]**
-Same agent, same rules — but now it's allowed to act on its own, when it's confident.
+In automated mode, an eligible offer can proceed without my approval.
 
 **[0:02]**
-Before anything runs, I set the guardrails myself: nonstop only, twelve hours max, budget capped at six-fifty.
+I set nonstop flights and twelve hours total in Settings. The request sets the budget at six-fifty.
 
 **[0:08]**
-I ask for a round trip, Austin to JFK, next Saturday, under budget.
+I request a round trip from Austin to JFK.
 
 **[0:16]**
-It still won't guess. The date's ambiguous and there's no return date — so it pauses and asks, even in automated mode.
+The dates still need clarification. The agent asks for the missing information before searching.
 
 **[0:24]**
-Once I answer, it searches, ranks against my rules, and decides.
+Once I answer, it searches live fares and checks the configured rules.
 
 **[0:28]**
-Two hundred twenty-six offers, filtered down to the ones that actually qualify.
+This recording returned two hundred twenty-six offers, grouped by eligibility.
 
 **[0:36]**
-Everything that broke a rule or ran over budget still gets shown, not hidden — I can see exactly what got ruled out, and why.
+I can inspect the over-budget and rejected options, including the reasons they failed a check.
 
 **[0:46]**
-Because this option met every constraint, it books it — automatically.
+The proposed flight passes, so booking proceeds automatically.
 
 **[0:50]**
-Confirmed. Mocked, obviously — no card charged, no ticket issued. But the decision, and the reasoning behind it, are right there on screen.
+The confirmation is simulated. No ticket is issued and no card is charged.
 
----
+## Recording instructions
 
-## Notes / open questions for you
+Use a measured product-demo read. Keep the simulation disclosure in both clips. Read only the narration, without timestamp labels.
 
-- Word counts (~135 words / clip 1, ~125 / clip 2) sit at a brisk-but-natural read for
-  58s / 52s. If your ElevenLabs voice reads slower than ~145 wpm, trim the "labeled and
-  visible — nothing gets buried" and "still gets shown, not hidden" lines first — they're
-  the most cuttable without losing the thesis.
-- No outro/CTA line included (e.g. "link in comments," "built with Claude Agent SDK +
-  Duffel") — didn't want to presume you want one or what it'd say. Easy to add to either
-  clip's last beat.
-- If these two clips get stitched into one combined post instead of run separately, I'd
-  add a ~4s cold open before Clip 1 framing the contrast ("Same agent. Two trust modes.")
-  — say the word and I'll draft it.
+The shorter script leaves room for search latency and pauses. Check the rendered audio against playback rather than treating word count as proof of timing.
+
+If the clips are combined, introduce them with: "The same agent follows two approval policies. Every booking is simulated."

@@ -1,122 +1,69 @@
-# FlightGenie — LinkedIn Hook A/B Test
+# FlightGenie LinkedIn hook comparison
 
-**Goal:** Test whether a *demo-led* hook or a *confession-led* hook drives more engagement, without changing anything else about the post.
+## Goal
 
-**Manipulated variable:** the first 1–2 lines only.
-**Held constant:** the video, the body, the CTA, the hashtags, the posting time-of-day, the "repo in comments" first comment.
+Compare a demo opening with a workflow opening while keeping the post's claim and simulation disclosure consistent.
 
----
+This is a directional comparison of organic posts. Sequential posts do not isolate the hook from changes in audience, feed distribution, or prior exposure.
 
-## Arm A — CONTROL (demo hook)
+## Openings
 
-Pick ONE opening. It attaches to the shared body below.
+Choose one opening per post. Use the same shared body and first comment.
 
-### A1 — Play-by-play
-> ▶️ That's an AI agent searching and booking a flight — start to finish, no human touching it.
->
-> No forms. No twelve open tabs. Just intent in, itinerary out.
-
-### A2 — Contrast
-> ▶️ Booking a flight, the way it should work: you say what you want, the agent does the rest.
->
-> What you're watching is a working POC — and the way it got built is the actual story.
-
-### A3 — Curiosity
-> ▶️ 15 seconds of an AI agent booking a flight on its own.
->
-> Cool to watch. But the part I can't stop thinking about is what building it taught me about *me*.
-
----
-
-## Arm B — EXPERIMENT ("I'm the bottleneck" hook)
-
-Pick ONE opening. It attaches to the shared body below.
-
-### B1 — Blunt confession
-> I built an AI agent that books flights on its own.
->
-> Then I realized the slowest, most biased part of the whole system is me.
-
-### B2 — Contrarian
-> The bottleneck in AI-assisted product work isn't the AI.
->
-> It's the human in the loop. I know, because for the last few weeks that human was me — and here's the agent I built to prove it. ▶️
-
-### B3 — Sample-size angle
-> I shipped an AI flight-booking agent fast — PRD, design system, prototype, code — almost entirely by prompting.
->
-> I also made every single decision myself. Sample size: 1. That's the problem. ▶️
-
----
-
-## Shared body + CTA
-
-> It's an early POC + vision prototype for **FlightGenie**, a consumer flight-booking agent I've been building.
->
-> Over the last few weeks I've used AI to produce nearly every artifact in the stack:
-> — the PRD and design brief
-> — a custom design system (shadcn/ui base + my own components)
-> — the working prototype
-> — the agent code, including its "book automatically vs. ask a human" oversight logic
-> — even the Claude skills I used to build the rest
->
-> I've gotten genuinely good at prompt engineering. And that's exactly the problem.
->
-> **I'm the bottleneck in my own workflow.** Every decision still routes through me — which makes me the single biggest source of bias in what gets built. Fast, but a sample size of one.
->
-> Next chapter: designing myself out of the loop in two places —
-> 1️⃣ An internal loop to automate more of the design → build cycle
-> 2️⃣ An external loop to validate (or kill) the idea — the part I have zero of today
->
-> Part 1 of a build-in-public series. Follow along if AI-assisted building (and its failure modes) is your thing.
->
-> Repo in the comments 👇
-
-**Note for Arm B:** since the bottleneck line is now your *hook*, compress it in the body so you're not repeating yourself verbatim. Replace the bold "I'm the bottleneck…" sentence with:
-> Which brings me back to the opening: I'm the constraint here. Fast, but a sample size of one.
-
-### First comment (both arms, identical)
-> Code's here if you want to poke around — the most interesting part is the oversight logic: the "book automatically vs. stop and ask a human" trust boundary that decides when the agent acts on its own and when it escalates.
->
-> https://github.com/alokjethanandani/flight-booking-agent
->
-> Feedback and hard questions welcome 👇
-
----
-
-## How to run it so the result actually means something
-
-### The core problem
-You can't run both at once to the same people. So you run them **sequentially and identically**, freeze the metrics at a fixed age, and compare *rates*, not raw counts.
-
-### Protocol
-| Rule | Why |
-|---|---|
-| Post Arm A and Arm B **7 days apart** | Lets audience/feed reset; reduces "already saw this" fatigue |
-| **Same weekday, same time-of-day** (e.g. both Tue 8:30am) | Removes day-of-week and time-of-day effects — LinkedIn's biggest organic confounds |
-| Identical video, body, CTA, hashtags | Isolates the hook as the only variable |
-| Don't cross-link or boost one | Prevents contaminating one arm with the other's audience |
-| Freeze metrics at a fixed window: **snapshot at 72h**, optional 7-day tail | Posts mature at different rates; compare at equal age, not equal calendar date |
-
-### What to measure
-Your hook only affects the **top of funnel** — whether someone stops, expands, and reacts. Both posts have the same body/CTA, so judge the hook on:
-
-| Metric | Role | How to read it |
+| Variant | Opening | Focus |
 |---|---|---|
-| **Engagement rate** = (reactions + comments + reposts) ÷ impressions | **Primary** | Normalizes for reach differences. This is your headline number. |
-| **Comments** | **Quality signal / tiebreaker** | Hardest engagement to earn; best proxy for "the hook made people *think*." |
-| Reposts | Amplification | Did the hook make people want to be seen sharing it? |
-| Impressions / reach | Guardrail | Big gap here = the algorithm, not the hook, moved — flag as a confound |
-| New followers + profile views | Ties to your CTA | Your actual goal is "follow for the series" — track this per post |
+| A1 | I built a flight agent that searches live fares and simulates booking without approval when the configured rules pass. | Working behavior |
+| A2 | This FlightGenie demo shows where an agent can act and where it needs approval. Every booking is simulated. | Oversight interaction |
+| A3 | Automated mode can book an eligible offer. Manual review asks first. Both paths return simulated confirmations. | Two modes |
+| B1 | I can generate features faster than I can verify them. Building FlightGenie made that gap concrete. | Verification gap |
+| B2 | Every product decision in this project still passed through me. Faster generation did not give me independent validation. | Decision bias |
+| B3 | I used AI to produce the spec, interface, and agent code. I still needed to check both the implementation and the idea. | Builder workflow |
 
-**Decide the primary metric (engagement rate) and the snapshot window (72h) *before* you post.** Picking the metric after you see the numbers is how you fool yourself.
+## Shared body
 
-### The honest caveat
-N = 1 post per arm. Even a visible gap could be noise. Treat the winner as a **hypothesis**, not a verdict.
+FlightGenie is a consumer flight-booking proof of concept I built to test booking permission and human review.
 
-### If you want real signal (optional)
-- **Cheap + rigorous:** make "hook style" a recurring variable across the whole series. Alternate demo-led vs. confession-led over 8–10 posts, tag each in a spreadsheet, and compare the *averages*. Aggregation beats any single head-to-head.
-- **True RCT (paid):** LinkedIn Campaign Manager can split-test two creatives to a randomized audience. Costs money and the audience isn't your organic followers — so it answers "which hook converts strangers," not "which hook lands with my network." Different question; know which one you care about.
+I used AI across the product brief, design system, prototype, and agent code. The working app searches live fares and enforces configured booking rules in code. Booking is always simulated.
 
-### Bottom line
-Best realistic setup: two posts, 7 days apart, same slot, everything-but-the-hook identical, engagement rate at 72h as the call, comments as the tiebreaker — read as directional. Use the series-level aggregation if you want something you'd actually stake a claim on.
+I still make the product decisions and review much of the generated UI by hand. That leaves two separate questions: did I build the behavior correctly, and does that behavior solve a real travel need?
+
+My next experiments address both:
+
+- Define smaller build tasks with explicit verification checks.
+- Calibrate a separate model reviewer against my own review.
+- Put the concept in front of travelers before making claims about demand.
+
+#AgenticAI #ProductDesign #BuildingInPublic
+
+## First comment
+
+The [repository](https://github.com/alokjethanandani/flight-booking-agent) includes the permission gate, simulated booking checks, and recorded design decisions.
+
+What evidence would you require before allowing an agent to book automatically?
+
+## Comparison protocol
+
+| Rule | Purpose |
+|---|---|
+| Use the same weekday and time, 7 days apart | Reduce timing differences while acknowledging repeat exposure |
+| Keep video, body, first comment, and hashtags identical | Limit intentional differences to the opening |
+| Use the same distribution approach | Avoid boosting only one variant |
+| Record metrics at 72 hours | Compare posts at the same age |
+| Select the primary measure before posting | Avoid choosing a favorable measure after seeing results |
+
+The 7-day gap and 72-hour window are protocol choices. They are not guarantees that other effects disappear.
+
+## Measures
+
+| Measure | Use | Limit |
+|---|---|---|
+| Engagement rate: reactions, comments, and reposts divided by impressions | Primary comparison | Reach and audience composition still differ |
+| Substantive comments | Review the quality of the discussion | Requires a consistent coding rule |
+| Impressions | Record distribution differences | Cannot identify why distribution changed |
+| Profile views and follows, where attributable | Assess relevance to the publishing goal | Attribution may be incomplete |
+
+Record the counts and denominators. Treat one post per variant as a hypothesis for another comparison. Do not describe the difference as a causal effect of the hook.
+
+## Next experiment
+
+If the result informs future writing, repeat opening styles across the series and compare patterns. Keep user validation separate from post engagement. A post receiving attention does not establish product demand.

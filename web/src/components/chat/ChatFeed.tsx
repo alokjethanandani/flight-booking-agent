@@ -27,20 +27,20 @@ function friendlyDecision(d: OversightDecision): string {
   switch (d.action) {
     case 'hitl-approved':
       return reselected
-        ? 'You picked a different option than I recommended.'
-        : 'You approved my recommendation.'
+        ? 'You selected another flight.'
+        : 'You approved the recommended flight.'
     case 'hitl-declined':
-      return 'You declined — nothing was booked.'
+      return 'You declined. No booking was made.'
     case 'escalated-approved':
       return 'You approved booking over budget.'
     case 'escalated-declined':
-      return 'You declined the over-budget option — nothing was booked.'
+      return 'You declined the over-budget option. No booking was made.'
     case 'auto-book':
-      return 'I auto-booked this — it met every one of your rules.'
+      return 'This offer meets your configured rules. Automatic booking can proceed.'
     case 'blocked-rejected':
-      return "I couldn't book this — it breaks a hard rule."
+      return "This offer failed a required check. Booking is blocked."
     case 'blocked-unknown':
-      return "I couldn't book this — it wasn't in the ranked results."
+      return "This offer is missing from the ranked results. Booking is blocked."
     default:
       return d.reason
   }
@@ -129,7 +129,7 @@ export function ChatFeed({
       })}
       {feed.length === 0 && !running && (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-          Tell FlightGenie where you're headed and it'll take it from here.
+          Enter a route and dates to search for flights.
         </div>
       )}
       {showTyping && <TypingIndicator />}

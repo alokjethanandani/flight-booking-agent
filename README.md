@@ -1,243 +1,231 @@
-# Consumer Flight-Booking Agent
+# FlightGenie
 
-**A learning-in-public portfolio project by [Alok Jethanandani](https://madebyalok.com)** ([LinkedIn](https://www.linkedin.com/in/alokjethanandani/))
+I built FlightGenie to test when an AI agent should act on its own and when it should ask for approval. It searches live flights, checks offers against your constraints, and runs in automated or human-in-the-loop mode.
 
-> This is not a product. It's a working proof-of-concept I built to go from "I prototype apps" to "I build agents" — and to make a real design point tangible: **when should an autonomous agent act on its own vs. stop and ask a human?**
+**Booking is always simulated.** The agent never charges a card, issues a ticket, or creates a real passenger reservation.
 
-## Why this project exists
+A portfolio project by [Alok Jethanandani](https://madebyalok.com). [Connect on LinkedIn](https://www.linkedin.com/in/alokjethanandani/).
 
-I spend a lot of my product/design work thinking about how to design for human oversight of AI systems, not just their execution. This project is that idea made concrete and buildable: a flight-booking agent that comparison-shops real flights against your constraints — a budget you state right in your request (e.g. "under $600"), plus max stops, max duration, and an optional preferred airline that defaults to *any* — and then does one of two things —
+## The design decision
 
-- **Automated mode:** if the best option cleanly meets every constraint, book it. No human needed.
-- **Human-in-the-loop mode:** if it doesn't — or if you've set the mode to always ask — the agent stops, shows you a preferred pick plus secondary options, and explains *why*, then waits for you to choose.
+I put booking permission in a code gate that runs before the booking tool executes. The model recommends an option. The gate checks whether that option can proceed under the selected mode.
 
-The mode toggle *is* the point. It's a small, legible demonstration of a trust boundary: where a system is confident enough to act, and where it should pause and defer.
+The browser shows the plan, flight options, approval requests, and simulated confirmation. This keeps the permission rule consistent across terminal and browser runs.
 
-**What I'm learning by building this:**
-- How an actual agent loop works (tool definitions → model picks a tool → code executes it → result feeds back → repeat → stop) using the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) — not a scripted flow.
-- How to design a human-in-the-loop checkpoint in front of a consequential action.
-- How to keep an agent's reasoning legible enough that a person can trust or override it, instead of it being a black box.
+| Mode | Eligible offer | Over budget within tolerance | Rejected offer |
+|---|---|---|---|
+| Automated | Simulates booking without approval | Asks for approval | Blocks booking |
+| Human-in-the-loop (default) | Asks for approval | Asks for approval | Blocks booking |
 
-Real flight search, real airlines, real prices. **Booking is always mocked** — this agent can never spend real money or issue a real ticket. See [Guardrails](#guardrails--what-this-is-not) below.
+Approval cannot override a rejected offer in this version. Change the constraints and search again to reconsider it.
 
-## Project status: work in progress
+### Demo videos
 
-This is being built in phases, each one demoable before moving to the next. Here's where it stands today:
-
-| Phase | What it is | Status |
-|---|---|---|
-| 0 — Setup | Claude Agent SDK wired up, one dummy tool proving the loop works | ✅ Done |
-| 1 — Real search | `search_flights` against Duffel's live API, normalized + price-ranked in the terminal | ✅ Done |
-| 2 — Constraints + ranking | Deterministic budget/stops/duration gating, soft airline preference, preferred vs. secondary ordering | ✅ Done |
-| 3 — Two modes | Automated (auto-book if in-constraint, else escalate) vs. HITL (always present + wait) — the design centerpiece | ✅ Done |
-| 4 — Thin UI | Browser app — chat + result cards + mode/constraint settings, hand-built in-repo (Vite/React + an Express/SSE bridge to the agent). Both modes verified live in-browser against production Duffel (see [`HLD-Phase4-Web-UI.md`](HLD-Phase4-Web-UI.md)) | ✅ Done |
-| 5 — Demo + writeup | Screen-recorded walkthrough of both modes | 🚧 Planned |
-
-Full detail on each phase — including dead ends, bugs found, and decisions reversed along the way — is in the running [`BUILD-LOG.md`](BUILD-LOG.md). The original design doc is [`Mini-PRD-Flight-Booking-Agent.md`](Mini-PRD-Flight-Booking-Agent.md).
-
-## The core innovation: the decision to act or ask lives in code, not the prompt or the screen
-
-The hard problem in this project isn't the flight search — it's deciding, for each result, whether the agent should book it on its own or stop and ask a person. That decision has to be reliable every single time, which means it can't be left to the two most persuadable parts of the system: the LLM's judgment and the UI's presentation layer.
-
-**1. A deterministic gate classifies every offer before the agent reasons about it.** [`rank-offers.ts`](src/lib/rank-offers.ts) is plain, unit-tested code — not a model call — that sorts every search result into one of three tiers against the user's constraints (budget, stops, duration):
-- **Eligible** — meets every constraint. Safe to auto-book.
-- **Tolerance** — over budget by up to 20% but otherwise compliant. Never auto-booked; always a candidate for escalation.
-- **Rejected** — breaks a hard constraint, or unknown data against a set constraint (conservative by default: missing information is treated as a failure, not a pass).
-
-An LLM is good at judgment and bad at reliably enforcing a precise numeric line like "20% over budget." So that line is drawn in code. The agent only gets to reason *after* the gate has already filtered the field — it orders the eligible survivors into a preferred pick plus alternatives and explains its reasoning in plain language, but it never gets a vote on what counts as in-bounds.
-
-The budget itself is stated in plain language in your request ("under $600"), but even that number never passes through the model: a regex ([`parse-budget.ts`](web/src/lib/parse-budget.ts)) extracts the figure and hands it straight to the gate. Reading budget from the prompt instead of a separate settings field also closes a silent conflict — the two can no longer disagree — while keeping the whole numeric path LLM-free.
-
-**2. A second, independent gate decides whether a booking is allowed to execute at all.** Classifying an offer and being allowed to book it are two different questions, so they're two different pieces of code. `book_flight` is deliberately left out of the agent's allowed tools; every attempt to call it is intercepted by a permission callback (`canUseTool`) in [`oversight.ts`](src/lib/oversight.ts) that runs *before* the tool executes and returns allow, pause, or deny — never something the model can talk its way past. Mode selects the policy:
-- **Automated mode:** eligible → books silently; tolerance → pauses and asks; rejected → denied outright.
-- **Human-in-the-loop mode:** eligible *and* tolerance both pause for explicit approval; rejected is still denied even if a human would say yes — the system doesn't let a person override a hard constraint in this version.
-
-Every decision — mode, tier, outcome, reasoning — is written to a structured log, so the automated/ask-a-human boundary is something you can point to and audit, not a black box you have to trust.
-
-**3. The booking action itself can't reach a real transaction, even if every gate above were somehow bypassed.** `book_flight` is a mock: it fabricates a confirmation and never calls a real order API. This is enforced twice — once behaviorally (the function itself), and once statically, with a test that scans the booking code's actual source for any reference to a real order call. That test suite is the project's floor: nothing above it can compromise it.
-
-**4. When the browser UI came along, it was built to render this boundary, not reimplement it.** The temptation was to put the act-vs-ask logic in the screen — check the budget, decide the color, render accordingly. Instead, the UI stays downstream of everything above: it displays the gate's output — green "meets all your rules," amber "slightly over budget, want to book anyway?", a receipt stamped `simulated` — but the decision itself is already made by the time it reaches the screen. The proof this held: the oversight and mock-boundary test suites didn't need to change while the entire UI was designed and built. If they had, that would have been the signal that the boundary had quietly moved into the presentation layer — the one place it can't be reliably enforced.
-
-The design principle underneath all of it: an agent that's trustworthy enough to act autonomously some of the time has to make *where that line is* legible and provable — not a matter of prompting the model nicely, and not a matter of styling the UI convincingly.
-
-## Key UX decisions
-
-The section above proves the act-or-ask boundary is *real* — enforced in code, not talked into the model. This section is the other half: the interaction design that makes that boundary **perceptible, trustworthy, and overridable by a human**. Enforcing a line and making a person *see and control* it are two different problems. These are the deliberate design calls for the second one.
-
-> ▶︎ The Tier-1 clips and Tier-2 stills below land with the Phase 5 recordings. Media lives in [`docs/media/`](docs/media/); until then the links are placeholders.
-
-### 1. The pre-action plan preview — show the boundary *before* it's crossed
-
-Before the agent does anything, it states what it will do on its own: *"I'll auto-book the best option that meets all your rules. If nothing qualifies, I'll stop and ask."* (Automated) / *"I'll find and rank options — you make every booking call."* (HITL)
-
-Most "AI agent" UIs explain a decision *after* it's made. That's an audit log, not oversight. Oversight means a person can see where the autonomy line sits *before* the agent reaches it, and decide whether they're comfortable. Moving the boundary statement upstream of the action is the single clearest expression of "designed for oversight" rather than "a chatbot with buttons" — which is why it's the hero interaction of the case study.
-
-[![Pre-action plan preview](docs/media/pre-action-preview.png)](docs/media/pre-action-preview.mp4)
-
-### 2. Default to human-in-the-loop, not automated
-
-A new session always starts in HITL. Automated is one toggle away — deliberately sequenced after, not hidden.
-
-Trust in an autonomous system is earned, not granted on install. Defaulting to HITL means the first thing a user experiences is the agent *deferring* to them, and it guarantees the oversight/escalation moment surfaces on every run instead of only when something breaks. The safe default and the demonstration payoff happen to be the same choice. A defensible default is a design decision, not an accident of implementation.
-
-[![Default HITL and the mode toggle](docs/media/default-hitl.png)](docs/media/default-hitl.mp4)
-
-### 3. Status tiers use semantic color — and escalation is *warning*, never *error*
-
-Every offer carries a status badge tied to its tier: **eligible → success** ("Meets all your rules"), **tolerance → warning** ("Close — slightly over budget"), **rejected → destructive** ("Breaks: max 1 stop"). The escalation callout — the "I paused because X" moment — is styled `warning`, not `destructive`. `destructive` is reserved for a genuine hard-constraint denial.
-
-The color is doing trust-calibration work. If the agent pausing to ask looked like an error, users would learn to dread the pause — the exact behavior oversight depends on. Coloring escalation as "attention needed" instead of "something went wrong" teaches the opposite: the pause is the system working, not failing.
-
-[![Status tiers and escalation tone](docs/media/status-tiers.png)](docs/media/status-tiers.mp4)
-
-### 4. An escalation is never a dead end
-
-When the agent stops and asks, the callout always carries an action row: **Approve anyway · Adjust the constraint · See alternatives** — with "Adjust the constraint" deep-linking straight to the field that triggered the pause.
-
-The moment the agent defers is the highest-stakes point in the whole interaction — it's where trust is either honored or squandered. A pause with no path forward tells the user oversight means *dead-ended*, and they'll flip to full automation just to stop hitting walls. Every stop has to come with a next step, and the fastest one (fix the offending rule) has to be one click from the complaint.
-
-[![Escalation callout with action row](docs/media/escalation-callout.png)](docs/media/escalation-callout.mp4)
-
-### Supporting decisions
-
-These extend the same principle — make the agent's reasoning and the guardrails legible — at lower stakes.
-
-**Constraints as guardrails, not a search form.** Editing a constraint shows its impact live — *"1 stop max removes 4 of 6 options"* — so the user feels they're tuning the agent's autonomy envelope, not filling out a form. "Safe by construction" made tangible.
-
-![Constraints panel with impact hints](docs/media/constraints-guardrails.png)
-
-**A narrated loop, not a spinner.** The agent's work is shown as steps — *Searching flights → Ranking against your rules → Deciding* — turning unavoidable Duffel + model latency into proof the agent is reasoning, not a frozen wait.
-
-![Narrated agent loop](docs/media/narrated-loop.png)
-
-**Honest mock confirmation.** The fabricated receipt carries a persistent *"Simulated booking — no ticket issued, no card charged"* marker (not buried in fine print) and a cancel/undo affordance despite nothing being real — signaling the reversibility value even where the transaction is fake.
-
-![Honest mock confirmation](docs/media/mock-confirmation.png)
-
-**Reasoning is pull, not push.** "Why this rank" sits behind progressive disclosure so the thread stays scannable, and a light "close call" note appears when the top pick and runner-up are near-tied — so a confident pick and a tentative one don't render identically.
-
-![Why this rank, with close-call signal](docs/media/why-this-rank.png)
-
-## Guardrails — what this is not
-
-- **`book_flight` is always mocked.** No code path calls Duffel's paid `order` endpoint — ever, in any mode. It returns a fake confirmation record. This is the one property of the project that isn't allowed to slip — it's enforced both behaviorally (the mock function itself) and statically (a test that scans the booking code's actual source for any Duffel order reference).
-- **No real payment, ticketing, or PNRs.** Not now, not once the UI exists.
-- **Not a shipped product.** This is a proof-of-concept: "done" means demoable end-to-end in both modes with the reasoning visible, not production-hardened, exhaustively tested, or handling every edge case.
-- **Scope is intentionally narrow.** One-way and round-trip flights only. No hotels, cars, multi-city, loyalty/points, seat selection, or user accounts. See the PRD's non-goals for the full list.
-
-## Tech stack
-
-| Layer | Choice |
+| [Autobook demo](https://youtu.be/_xD-YL0fAsE) | [Human-in-the-loop demo](https://youtu.be/ewoBK6E12t0) |
 |---|---|
-| Language | TypeScript, end-to-end |
-| Agent runtime | [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) — tool-use loop + HITL checkpoints |
-| Flight search | [`@duffel/api`](https://www.npmjs.com/package/@duffel/api), Duffel's official TS client, production search |
-| Validation | Zod v4 |
-| Runtime tooling | `tsx`, Node 18+ |
-| UI (Phase 4) | Hand-built in-repo — Vite + React + Tailwind + shadcn/ui, thin Express server streaming the agent over SSE (see [`HLD-Phase4-Web-UI.md`](HLD-Phase4-Web-UI.md)) |
+| [![Watch the autobook demo](https://img.youtube.com/vi/_xD-YL0fAsE/hqdefault.jpg)](https://youtu.be/_xD-YL0fAsE) | [![Watch the human-in-the-loop demo](https://img.youtube.com/vi/ewoBK6E12t0/hqdefault.jpg)](https://youtu.be/ewoBK6E12t0) |
 
-## Technical architecture
+## Run locally
 
-The whole thing is one Node process. A React SPA (Vite) is the front end; a thin Express server runs the Claude Agent SDK's `query()` loop with four tools (`search_flights`, `rank_offers`, `book_flight`, `ask_user`) and the `canUseTool` oversight gate. In production the server serves the built SPA as static assets; in dev, Vite proxies `/api/*` to it. No database, no auth, no persisted state — a single in-memory session (v1 is deliberately logged-out). The Phase 0–3 terminal entrypoints still run the same agent pipeline headless.
+Use Node 22.12+ and npm for the browser app. The installed Vite packages require Node 20.19+ or 22.12+.
 
-**The one non-trivial problem was letting a browser drive an agent loop that was built for a terminal.** The Phase 3 oversight gate never read stdin directly — it takes an `AnswerProvider` and awaits `ask(prompt)`, and two implementations already existed (real stdin, and a scripted queue for recordings). The web app adds a third: when the gate needs a human decision, the web provider emits an SSE event to the browser and **parks its `resolve` function**, leaving the promise pending — `canUseTool` is async and will await a browser round-trip exactly as it awaited stdin. The browser POSTs the answer (`y` / `n` / a number for reselection) to `/api/decision`; the server calls the parked resolver; the gate resumes with its *existing* routing logic. The UI only transports the choice — it holds no routing rules — so `oversight.ts` needed no changes to gain a web front end.
-
-The HTTP contract is three endpoints:
-
-| Endpoint                | Purpose                                                                                                                          |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /api/run`         | Start a run from `{ tripRequest, constraints, mode }`                                                                            |
-| `GET /api/stream` (SSE) | Stream loop events — search/rank/decide steps, offers, the pre-action plan, escalations, the decision log, the mock confirmation |
-| `POST /api/decision`    | Resolve a parked oversight gate with the human's `y` / `n` / number                                                              |
-
-Every SSE event maps to an existing artifact of the loop — `classifyOffers` output, an `OversightDecision` record, the mock `BookingResult` — so the UI renders state it's handed rather than deriving any of it. Everything under `src/lib/` (search, the constraint gate, oversight, mock booking) was **read-only** for this phase: if the build had needed to touch it, that would have been the signal the trust boundary was leaking into the transport layer.
-
-Full topology, the SSE + `AnswerProvider` bridge, the event and decision schemas, and the per-mode run lifecycle are in [`HLD-Phase4-Web-UI.md`](HLD-Phase4-Web-UI.md).
-
-
-## Setup
-
-**Prerequisites:**
-- Node 18+
-- An [Anthropic API key](https://console.anthropic.com/)
-- A [Duffel](https://duffel.com/) account with a **production** API token (test-mode tokens only return one sandbox airline, which defeats the point of comparison-shopping — search-only, so this is safe; booking is mocked regardless of which token is used)
+You need an [Anthropic API key](https://console.anthropic.com/) and a [Duffel production API token](https://duffel.com/). Production search returns live multi-airline fares. The booking tool stays simulated regardless of the token.
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/alokjethanandani/flight-booking-agent.git
 cd flight-booking-agent
 npm install
+npm install --prefix web
 cp .env.example .env
 ```
 
-Fill in `.env`:
+Set these values in `.env`:
 
+```dotenv
+ANTHROPIC_API_KEY=your_anthropic_api_key
+DUFFEL_API_KEY_PROD=your_duffel_production_token
 ```
-ANTHROPIC_API_KEY=sk-ant-...
-DUFFEL_API_KEY_PROD=duffel_live_...
-DUFFEL_API_KEY_TEST=duffel_test_...   # optional, not used by default
-```
 
-## Running it
-
-The browser app (Phase 4) is the primary way to run it — you type the trip, pick the mode, and watch the agent work:
+`DUFFEL_API_KEY_TEST` is optional for local Duffel checks. The agent's search tool uses the production token. Keep credentials in `.env`, which is excluded from git.
 
 ```bash
-npm run dev           # server + web together (Vite on :5173, hot reload) — the dev loop
-npm run phase4        # build the web app and serve it from the single Express server
+npm run dev
 ```
 
-The Phase 0–3 terminal entry points still run the same pipeline headless:
+Open [localhost:5173](http://localhost:5173). Vite serves the UI and forwards `/api` requests to Express on port 3001. Model calls and live searches use your provider accounts.
+
+To build the UI and serve it with the API:
 
 ```bash
-npm run phase0        # dummy tool, proves the agent loop wiring
-npm run phase1        # real Duffel search, price-ranked terminal output
-npm run phase2        # search + constraint gating + agent-ordered preferred/secondary picks
-npm run phase3:hitl   # search + gate + book — pauses for human approval on every booking
-npm run phase3:auto   # search + gate + book — auto-books eligible picks, escalates the rest
-npm test              # offline unit tests: constraint gate, mock boundary, oversight routing
-npm run typecheck
+npm run phase4
 ```
 
-Useful Phase 3 flags: `--scenario=autobook|escalate` (tunes the demo budget), `--offline` (uses fixed fixtures instead of a live Duffel call, for reproducible runs), `--answers="y;n;3"` (scripts the human replies for non-interactive recordings). See `src/phase3-two-modes.ts`'s header for the full list.
+Open [localhost:3001](http://localhost:3001).
 
-The terminal phases use a hardcoded demo trip in their respective `src/phase*.ts` files; natural-language intake — typing the trip in your own words — lives in the Phase 4 browser app.
+## Use the agent
 
-## Project structure
+1. Choose manual review or automatic booking in Settings. New sessions start in manual review.
+2. Set maximum stops, total duration, passengers, and cabin. Choose an airline preference if needed.
+3. Describe the route and dates. Include a USD budget such as "under $600" to set a price cap.
+4. Read the plan before the search proceeds. Answer any clarification or approval request.
+5. Review the simulated confirmation and the agent's explanation.
 
-```
-src/
-  phase0-hello-world.ts     # Phase 0: minimal agent, one dummy tool
-  phase1-search-flights.ts  # Phase 1: real search tool wired to the agent loop
-  phase2-rank-flights.ts    # Phase 2: search + rank tools, agent orders the results
-  phase3-two-modes.ts       # Phase 3: + book_flight (mock) + ask_user; oversight gate wired in
-  lib/
-    duffel-client.ts        # Duffel client factory (prod/test), key validation
-    search-flights.ts       # Offer request -> normalized offers, price-sorted
-    normalize-offer.ts      # Duffel offer shape -> internal NormalizedOffer
-    constraints.ts          # Constraint definitions + budget tolerance
-    rank-offers.ts          # The deterministic eligible/tolerance/rejected gate
-    rank-offers.test.ts     # Offline unit tests for the gate
-    offer-store.ts          # In-process bridge passing full-fidelity offers between tools
-    oversight.ts            # The canUseTool gate — the auto-vs-ask trust boundary — + decision log
-    oversight.test.ts       # Offline unit tests for every routing branch (automated + HITL)
-    book-flight.ts          # The MOCK booking action; imports nothing from @duffel/api
-    book-flight.test.ts     # Behavioral tests + a static scan proving no order-endpoint reference
-    prompt-io.ts            # Human-answer provider: real stdin or scripted (--answers)
-    demo-fixtures.ts        # Fixed offline offers for reproducible demo recordings (--offline)
-    print-offers.ts         # Terminal rendering, Phase 1
-    print-classified.ts     # Terminal rendering, Phase 2+
-    preflight.ts            # Fail-fast credential checks before the agent loop starts
-```
+The budget parser reads supported price expressions from your request. If it finds no budget, the run has no price cap. Stops and duration come from Settings, so check those fields before searching.
 
-## Deeper reading
+Duration means the sum of the outbound and return flight durations for a round trip. Airline preference is soft by default. Select "Only use this airline" to exclude other carriers before classification.
 
-- [`Mini-PRD-Flight-Booking-Agent.md`](Mini-PRD-Flight-Booking-Agent.md) — the design doc: scope, architecture, phased plan, and the locked decisions this project won't silently deviate from.
-- [`BUILD-LOG.md`](BUILD-LOG.md) — a session-by-session log of what got built, what broke, and why — including the parts that didn't work on the first try.
-- [`HLD-Phase4-Web-UI.md`](HLD-Phase4-Web-UI.md) — the technical design for the Phase 4 web UI (topology, the SSE + web-`AnswerProvider` bridge, API contract, oversight rendering).
-- [`UX-Interaction-Brief-Phase4.md`](UX-Interaction-Brief-Phase4.md) / [`Vision-Brief-Logged-In.md`](Vision-Brief-Logged-In.md) — behavior/flow specs for the v1 build and the (unbuilt) logged-in product vision, respectively.
-- [`prompts/`](prompts/) — the system prompts used to generate the design system and drive Claude Code/Claude Design for this project.
-- [`content/`](content/) — LinkedIn/Medium write-ups documenting the build in public.
+Dates and other request details depend on model interpretation. Departure and arrival time windows are not enforced by the deterministic constraint gate.
+
+## How the permission gate works
+
+### 1. Classify offers against constraints
+
+[`rank-offers.ts`](src/lib/rank-offers.ts) applies budget, stops, and duration checks in code. The default budget tolerance is 20%.
+
+| Tier | Rule | Booking permission |
+|---|---|---|
+| `eligible` | Meets the configured hard constraints and budget, if set | Can proceed automatically in automated mode |
+| `tolerance` | Up to 20% over budget with the other hard constraints met | Requires approval in both modes |
+| `rejected` | Exceeds tolerance, fails a hard constraint, or cannot verify required duration or currency | Blocked in both modes |
+
+The browser extracts the budget with [`parse-budget.ts`](web/src/lib/parse-budget.ts). Full offers stay in [`offer-store.ts`](src/lib/offer-store.ts), so the gate checks stored search data rather than model-generated prices.
+
+Code sorts each tier by price, duration, and airline preference. The model can recommend and explain a choice within the classified results. The result-card order follows the code's default sort.
+
+![Flight agent architecture](content/images/flight_agent_architecture.png)
+
+### 2. Check permission before booking
+
+`book_flight` is excluded from the pre-approved tool list. The SDK calls `canUseTool` in [`oversight.ts`](src/lib/oversight.ts) before execution.
+
+The gate applies the selected mode and waits for approval when required. It records the tier, action, outcome, and reason in a structured decision log. Unknown offer IDs are denied.
+
+### 3. Return a simulated confirmation
+
+[`book-flight.ts`](src/lib/book-flight.ts) checks offer expiry and returns a fabricated booking record. It imports no Duffel client and makes no order request.
+
+The booking tests check simulated results and expiry behavior. A source scan also checks for Duffel imports and order-call patterns in the booking module. These checks cover the implemented boundary without claiming to prove every future change safe.
+
+## Interaction decisions
+
+I designed the interface around the points where a traveler grants or reviews permission.
+
+| Decision | Reason | Current behavior |
+|---|---|---|
+| Show a plan before action | Make the selected mode visible before a booking attempt | The plan states when the agent will ask |
+| Default to manual review | Let users review recommendations before enabling automation | Every bookable pick needs approval in this mode |
+| Use amber for approval requests | Distinguish a budget exception from a failed search | Over-budget offers ask for approval |
+| Keep alternatives available | Let users compare offers before deciding | Manual review supports numbered reselection |
+| Show search, ranking, and decision steps | Make progress visible during provider latency | The UI renders tool events as steps |
+| Label the confirmation as simulated | Make the transaction boundary clear | The receipt states that no ticket or charge exists |
+
+Live impact hints, close-call signals, and direct links from an escalation to a specific setting remain design intent. They are documented in the [interaction brief](UX-Interaction-Brief-Phase4.md).
+
+The cancellation control changes the displayed simulated receipt. It does not cancel a real reservation. Mode changes during a run apply to the next search.
+
+## Architecture
+
+The React app talks to an Express server running the Claude Agent SDK. The tools are `search_flights`, `rank_offers`, `ask_user`, and `book_flight`.
+
+When approval is required, a web `AnswerProvider` sends the question over Server-Sent Events and keeps a promise pending. The browser posts the answer, and the existing permission gate resumes.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/run` | Start a run and return its ID |
+| `GET /api/stream?runId=...` | Stream progress, offers, questions, decisions, and confirmation |
+| `POST /api/decision` | Submit an answer for a pending question |
+
+The app uses TypeScript, React, Vite, Tailwind, shadcn/ui, Express, Zod, the Claude Agent SDK, and Duffel's TypeScript client. See the [technical design](HLD-Phase4-Web-UI.md) for the API and event contracts.
+
+This is a local, single-user proof of concept. Run state stays in memory. There are no accounts, authentication, or durable session storage.
+
+## Commands and checks
+
+Run these from the project root:
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Start the API and browser dev servers |
+| `npm run phase4` | Build the browser app and serve it with the API |
+| `npm run phase0` | Run the agent loop with a dummy tool |
+| `npm run phase1` | Search live flights and print results |
+| `npm run phase2` | Search, classify, and recommend offers |
+| `npm run phase3:hitl` | Run the terminal agent with booking approval |
+| `npm run phase3:auto` | Run the terminal agent in automated mode |
+| `npm test` | Check classification, simulated booking, and permission routing offline |
+| `npm run typecheck` | Check server and terminal TypeScript |
+| `npm run build:web` | Check browser TypeScript and build the UI |
+| `npm run lint --prefix web` | Lint the browser app |
+| `npm run test:tools` | Check the document lint tool |
+
+Phase 3 supports these flags after `--`:
+
+| Flag | Purpose |
+|---|---|
+| `--scenario=autobook` | Use the automatic-booking demo budget |
+| `--scenario=escalate` | Use the escalation demo budget |
+| `--offline` | Replace Duffel search with fixed offers. Model calls still run |
+| `--answers="y;n;3"` | Supply scripted human replies for a recording |
+
+The terminal entry points use demo trips defined in their source files. Natural-language intake is available in the browser app.
+
+### Auto-commit
+
+`tools/auto-commit.mjs` commits every change in the repo with a generated message. It commits locally only and never pushes.
+
+| Command | Purpose |
+|---|---|
+| `npm run commit` | Commit all current changes once |
+| `npm run commit -- --dry-run` | Show what would be committed and the message, without committing |
+| `npm run commit -- -m "Subject"` | Commit once with your own subject line |
+| `npm run commit:watch` | Keep running and commit each time the files stop changing. Press Ctrl-C to stop |
+
+Both modes accept these flags after `--`:
+
+| Flag | Purpose |
+|---|---|
+| `--check` | Run `npm test` and `npm run typecheck` first. Skip the commit if either fails |
+| `--interval=N` | Watch mode: seconds between checks for changes. Default 2 |
+| `--quiet=N` | Watch mode: seconds the files must stay unchanged before a commit. Default 10 |
+
+The script refuses to commit `.env` files, key files, files over 5 MB, or any added line that looks like a Duffel or Anthropic key. It reports the problem and waits until you fix it.
+
+Watch mode is safe to leave running while you or an agent work in the repo:
+
+- Only one watcher can run at a time.
+- A burst of edits lands as one commit, after the files settle.
+- It stages into a temporary index, so your own `git add` and `git commit` are not disturbed.
+- It never overwrites someone else's commit. If the branch moves while it is committing, it drops its commit and rebuilds on top.
+- It pauses while another git command, merge, or rebase is in progress.
+
+Watch mode commits to whichever branch is checked out, including `main`, and every pause in editing becomes a commit. Run it on a separate branch if you want to squash the history later. It does not run git hooks.
+
+## Project status and scope
+
+Phases 0 through 4 are implemented: the agent loop, live search, constraint classification, both permission modes, and the browser UI. Phase 5 covers recordings and publishing drafts. The build log records earlier browser checks against live providers.
+
+Supported trips are one-way and round-trip, with adult passengers. Hotels, cars, multi-city trips, loyalty redemption, seat selection, accounts, and real payment are outside v1.
+
+| Path | Contents |
+|---|---|
+| `src/phase*.ts` | Terminal entry points |
+| `src/lib/` | Search, classification, offer storage, oversight, simulated booking, and tests |
+| `src/server/` | API routes, agent orchestration, SSE, and browser answers |
+| `web/` | Browser UI |
+| `docs/media/` | Recording plan and media assets when available |
+| `content/` | Publishing drafts and narration |
+| `prompts/` | Design and build instructions used for this project |
+
+## Project documents
+
+- [Product brief](Mini-PRD-Flight-Booking-Agent.md): scope, success criteria, and recorded decisions.
+- [Build log](BUILD-LOG.md): implementation history, failures, and verification notes.
+- [Technical design](HLD-Phase4-Web-UI.md): browser-to-agent transport and run lifecycle.
+- [Interaction brief](UX-Interaction-Brief-Phase4.md): behavior requirements and remaining design intent.
+- [Logged-in vision](Vision-Brief-Logged-In.md): static concepts beyond v1.
+- [Learning roadmap](Learning-Roadmap-Loop-Engineering.md): planned experiments in build and verification loops.
+- [Browser guide](web/README.md): UI development and implementation limits.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT. See [LICENSE](LICENSE).

@@ -1,113 +1,97 @@
-# HLD — Phase 4 Web UI (FlightGenie)
+# Technical design: Phase 4 web UI
 
-**Owner:** Alok · **Drafted:** 2026-07-20 · **Status:** For build
-**Source of truth:** `Mini-PRD-Flight-Booking-Agent.md` (scope/guardrails), `UX-Interaction-Brief-Phase4.md` (behavior/flows), `prompts/design-system-prompt.md` (tokens/components). Where any of those disagree with this doc, they win — this is the *technical* layer only.
-**Implements:** PRD §7 Phase 4. **Build brief:** `prompts/Claude-Code-Prompt-Phase4.md`.
+Owner: Alok Jethanandani. Drafted: July 20, 2026. Status: Implemented, with limits recorded below.
 
----
+Source of truth: [product brief](Mini-PRD-Flight-Booking-Agent.md) for scope, [interaction brief](UX-Interaction-Brief-Phase4.md) for design intent, and [design-system prompt](prompts/design-system-prompt.md) for tokens. Source types in `src/server/types.ts` define the current API payloads.
 
 ## 1. Purpose
 
-Give the finished Phase 3 agent (real Duffel search, deterministic constraint gate, `canUseTool` oversight boundary, mock booking) a thin web front end so the oversight model is visible in a browser and the whole thing is screen-recordable in both modes. This doc specifies *how the browser drives the existing agent loop* — the one non-trivial engineering problem in the phase. Everything else is UI assembly against an already-tested core.
+Connect the Phase 3 agent to a browser while keeping classification and booking permission in the existing core. The browser shows the plan, offers, approval requests, and simulated result.
 
-The design centerpiece is unchanged from Phase 3: **the human can see, before it happens, when the agent will act on its own vs. pause and ask.** The UI renders that; it does not re-implement it.
+I reused the human-answer interface because it already separated permission policy from input transport. That let browser approval follow the same route as terminal approval.
 
-## 2. Non-negotiables carried into this phase
+## 2. Constraints carried into this phase
 
-These come from PRD §4 / CLAUDE.md §1 / UX brief §0 and bound every decision below.
-
-| Guardrail | Consequence for this design |
+| Constraint | Implementation requirement |
 |---|---|
-| `book_flight` is always mocked; no reachable Duffel `order` path | The new HTTP layer calls the *same* `lib/book-flight.js`. No new Duffel client usage. §14 mock-boundary check re-run after wiring. |
-| No real payment / ticketing / PNRs | Confirmation is the existing fabricated record, rendered honestly (UX §A7). |
-| Logged-out, session-only, no auth | No login, no DB, no persisted user state. In-process, single-session server. |
-| Trust boundary lives in code, not the prompt | The web layer **must not** re-implement routing. It only transports the gate's prompt to the human and the human's answer back. `oversight.ts` is untouched. |
-| Keep it thin (over-built UI is a named PRD §9 risk) | One page, no router. Spend the budget on the oversight surfaces, not chrome. |
+| Booking stays simulated | Call `src/lib/book-flight.ts`. Add no Duffel order request |
+| No real payment, ticket, or passenger reservation | Label the fabricated confirmation clearly |
+| No accounts or durable session storage | Keep run state in memory |
+| Core owns permission | Transport questions and answers without duplicating the gate |
+| Single-user demo | Allow one active run at a time |
 
-**Explicit rule:** `oversight.ts`, `rank-offers.ts`, `book-flight.ts`, `constraints.ts`, `normalize-offer.ts`, `search-flights.ts`, and the `*.test.ts` suite are **read-only** for this phase. If the build appears to need a change to any of them, stop and raise it — that's a signal the boundary is about to move.
+The phase treated `oversight.ts`, `rank-offers.ts`, `book-flight.ts`, `constraints.ts`, `normalize-offer.ts`, `search-flights.ts`, and their tests as read-only. Changes to those files would require reviewing the boundary rather than absorbing them into UI work.
 
 ## 3. System topology
 
-```
-┌─────────────────────────────┐         ┌──────────────────────────────────────────┐
-│  Browser — React SPA (Vite) │         │  Node server (Express, run via tsx)        │
-│                             │         │                                            │
-│  Chat · Results · Settings  │         │   POST /api/run      ── starts a run       │
-│  Escalation · Confirmation  │         │   GET  /api/stream   ── SSE: loop events   │
-│                             │         │   POST /api/decision ── resolves the gate  │
-│   EventSource ◀────────────────SSE────┤                                            │
-│   fetch() ─────────────────────POST──▶│   ┌─ per-run orchestrator ──────────────┐  │
-└─────────────────────────────┘         │   │ query() from @anthropic-ai/         │  │
-                                        │   │ claude-agent-sdk, 4 tools,          │  │
-                                        │   │ canUseTool = createOversightGate({  │  │
-                                        │   │   mode, answers: WEB PROVIDER })    │  │
-                                        │   └─────────────────────────────────────┘  │
-                                        │        │ imports, in-process:               │
-                                        │        ▼                                    │
-                                        │   src/lib/*  (search-flights, rank-offers,  │
-                                        │   oversight, book-flight [MOCK], offer-     │
-                                        │   store, demo-fixtures)  ── UNCHANGED       │
-                                        └────────────────┬───────────────────────────┘
-                                                         ▼
-                                              Duffel (search only) · Claude model
+```text
+Browser: React + Vite
+  POST /api/run                  Start a run
+  GET /api/stream?runId=...       Receive SSE events
+  POST /api/decision             Answer a pending question
+              |
+Express + Claude Agent SDK
+  query() + four tools + canUseTool
+              |
+src/lib: search, classification, oversight, simulated booking
+              |
+Duffel search API + Claude model
 ```
 
-Single Node process. The SPA is served as static assets (Vite build) by the same Express server, or from the Vite dev server proxying `/api/*` in development. No second backend, no database.
+In development, Vite serves the UI on port 5173 and proxies `/api` to Express on port 3001. `npm run phase4` builds the SPA and serves it from Express.
 
-## 4. The bridge (the crux) — SSE + a web `AnswerProvider`
-
-Phase 3 already anticipated this. The oversight gate does not read stdin directly; it takes an `AnswerProvider` (`lib/prompt-io.ts`) and calls `answers.ask(prompt) → Promise<string>`. Two impls exist: real stdin, and a scripted queue for recordings. **We add a third.**
+## 4. Browser answers over SSE
 
 ### 4.1 Web `AnswerProvider`
 
-A per-run object implementing the same interface:
+The gate calls `answers.ask(prompt)` and awaits a string. Terminal input, scripted replies, and browser answers implement the same interface.
 
 ```ts
 interface AnswerProvider {
-  ask(prompt: string): Promise<string>;   // resolves with "y" | "n" | a number
-  readonly scripted: boolean;             // false
+  ask(prompt: string): Promise<string>;
+  readonly scripted: boolean;
 }
 ```
 
-`ask(prompt)` does two things:
-1. Emits an SSE event to the browser: `{ type: 'escalation', prompt, options, offers }` (the human-facing decision surface).
-2. Returns a promise and **parks its `resolve` function** in the run's state. It stays pending — the SDK's `canUseTool` is an async callback and will happily await a browser round-trip (exactly as it awaits stdin today).
+The web provider emits an `escalation` event and stores the promise resolver in the active run. A browser answer posted to `/api/decision` resolves that promise. The gate then continues with its existing routing.
 
-When the browser POSTs `/api/decision`, the server looks up the parked `resolve` and calls it with the normalized answer string (`"y"`, `"n"`, or a number for HITL reselection). The gate resumes, applies its *existing* routing logic, and books-or-denies through the *existing* mock. The UI never contains any routing rules — it only renders the prompt and returns a choice, precisely matching the CLI's `y / n / number` contract so `oversight.ts` needs no change.
+Booking approval uses `y`, `n`, or a numbered manual-review selection. Clarification through `ask_user` accepts free text. The UI carries the answer without granting permission itself.
 
-### 4.2 Why not WebSockets
+### 4.2 Transport choice
 
-Server→client is a one-way stream of events; client→server is a couple of discrete POSTs. SSE (`EventSource`) covers the stream with less ceremony than a socket, reconnection is built in, and it's trivial to render. Chosen for thinness. (If bi-directional interactivity grows later, revisit — not in v1.)
+I chose SSE because the server sends a stream of updates while the browser sends discrete answers. HTTP POSTs cover those answers without adding a second bidirectional protocol.
 
 ## 5. API contract
 
-| Endpoint | Method | Body / params | Returns |
-|---|---|---|---|
-| `/api/run` | POST | `{ tripRequest, constraints, mode }` | `{ runId }`; kicks off `query()` server-side |
-| `/api/stream?runId=` | GET (SSE) | — | event stream (below) |
-| `/api/decision` | POST | `{ runId, answer }` where `answer ∈ "y" \| "n" \| "<number>"` | `{ ok: true }`; resolves the parked gate promise |
-
-`tripRequest` may be the raw natural-language string (model does intake) **or** structured fields the UI assembles into the prompt; `constraints` mirrors the `rank_offers` params (`maxPrice`, `currency`, `maxStops`, `maxTotalDurationMinutes`, `preferredAirlines`, `budgetTolerancePct`). `mode ∈ 'automated' | 'hitl'`.
-
-### 5.1 SSE event types (server → browser)
-
-Each maps to an existing artifact of the loop; the UI renders, never derives.
-
-| `type` | Payload | UI surface |
+| Endpoint | Input | Result |
 |---|---|---|
-| `loop_step` | `{ label: 'searching' \| 'ranking' \| 'deciding' }` | Thinking-state stepper in the thread (UX §A5) |
-| `assistant_text` | `{ text }` | Agent narration in the chat thread |
-| `offers` | `{ eligible[], tolerance[], rejected[] }` from `classifyOffers` | Result cards + constraint-status badges (UX §A3) |
-| `plan_preview` | `{ mode, message }` | Pre-action plan banner — **the hero** (UX §A2a) |
-| `escalation` | `{ prompt, options[], offers[] }` from the web provider | Escalation callout / HITL approval overlay (UX §A2c) |
-| `decision` | one `OversightDecision` (see §6) | Updates the oversight trace + card state |
-| `confirmation` | the mock `BookingResult` | Honest mock-confirmation overlay (UX §A7) |
-| `error` | `{ message }` | Failure/empty states (UX §A6) |
-| `done` | `{ decisionLog: OversightDecision[] }` | Final oversight trace |
+| `POST /api/run` | `{ tripRequest, constraints, mode, offline?, hardAirline? }` | `{ runId }` |
+| `GET /api/stream?runId=...` | Registered run ID | Starts the query loop and streams events |
+| `POST /api/decision` | `{ runId, answer }` | `{ ok: true }` when a question is pending |
+
+`mode` is `automated` or `hitl`. `constraints` supports `maxPrice`, `currency`, `maxStops`, `maxTotalDurationMinutes`, `preferredAirlines`, and `budgetTolerancePct`.
+
+`hardAirline` is an optional IATA code. The server removes other carriers before classification. `offline` substitutes fixture offers for Duffel search while retaining the model loop. The browser uses live search by default.
+
+### 5.1 SSE events
+
+| Event | Payload | UI use |
+|---|---|---|
+| `plan_preview` | `{ mode, message }` | State the approval policy before action |
+| `loop_step` | `{ label }`, with searching, ranking, or deciding | Show progress |
+| `assistant_text` | `{ text }` | Show model narration |
+| `offers` | `{ eligible, tolerance, rejected, searchedCount }` | Show classified flight cards |
+| `escalation` | `{ mode, prompt, options, offers, requestedOfferId?, isFreeText }` | Request approval or clarification |
+| `decision` | `OversightDecision` | Show the decision outcome |
+| `confirmation` | `BookingResult` | Show a simulated receipt or expired offer |
+| `error` | `{ message }` | Show the failure and retry control |
+| `done` | `{ decisionLog }` | Finish the run |
+
+`searchedCount` includes the original search results before a hard-airline filter. Displayed tier counts can therefore sum to less than the search count.
 
 ## 6. Rendering the oversight model
 
-The gate emits a structured record per booking decision — render it directly, do not re-derive. Shape (from `lib/oversight.ts`, authoritative):
+`src/lib/oversight.ts` defines the authoritative decision record:
 
 ```ts
 interface OversightDecision {
@@ -120,82 +104,80 @@ interface OversightDecision {
   action: 'auto-book' | 'escalated-approved' | 'escalated-declined'
         | 'blocked-rejected' | 'blocked-unknown'
         | 'hitl-approved' | 'hitl-declined';
-  reason: string;             // the legibility payload — show this verbatim
-  finalOfferId?: string;      // set when the human reselected
+  reason: string;
+  finalOfferId?: string;
   humanPrompt?: string;
   humanAnswer?: string;
 }
 ```
 
-`getDecisionLog()` returns `OversightDecision[]`. Token mapping the UI must honor (from UX §A2c / §A3, design system semantic tokens):
+A pending approval is represented by an `escalation` event. It is not a separate `outcome` value. The final record contains `allow` or `deny`.
 
-| `tier` / `outcome` | Token | Meaning shown |
+| Tier | Treatment | Meaning |
 |---|---|---|
-| `eligible` | **success** (muted green) | "Meets all your rules" |
-| `tolerance` | **warning** (amber) | "Close — slightly over budget"; the escalation case |
-| `rejected` | **destructive** (red) | "Breaks: `<rule>`"; de-emphasized, not bookable |
-| `outcome: allow` | success accent | acted / approved |
-| `outcome: deny` | warning (escalate) or destructive (hard block) | paused / blocked |
+| `eligible` | Success | Meets the configured constraints |
+| `tolerance` | Warning | Over budget within the tolerance band. Approval required |
+| `rejected` | Alert | Fails a required check. Booking blocked |
 
-The pre-action plan preview (§A2a) is keyed off `mode` *before* any decision arrives — automated: "I'll auto-book the best option that meets all your rules; if nothing qualifies I'll stop and ask." HITL: "I'll find and rank options — you make every booking call."
+The decision log retains the gate's exact reason. The chat feed maps known actions to shorter user-facing sentences. "Why this rank" shows classification reasons rather than a complete model explanation.
+
+Result cards use the classifier's default sort. The model's recommendation can differ from the first result card. The approval card follows `requestedOfferId` when available.
 
 ## 7. Run lifecycle
 
-**Automated, happy path:** `/api/run` → `loop_step: searching` → `offers` → `loop_step: deciding` → gate sees `eligible` → allows with no human → `decision(auto-book)` + `confirmation` → `done`. No `escalation` event fires.
+| Path | Sequence |
+|---|---|
+| Automated, eligible | Search, classify, request booking, gate allows, simulated confirmation |
+| Automated, tolerance | Search, classify, request booking, await approval, allow or deny |
+| Manual review | Search, classify, present options, await approval or numbered reselection |
+| No bookable results | Show the empty state. The user can adjust rules and search again |
+| Missing trip information | Ask a free-text question and await the answer |
 
-**Automated, escalation beat:** best option is `tolerance` → gate calls `answers.ask()` → server emits `escalation` and parks the resolver → UI shows the callout with `Approve anyway / Adjust constraint / See alternatives` → user POSTs `/api/decision` → gate resumes → `decision(escalated-approved|declined)` (+ `confirmation` if approved) → `done`.
-
-**HITL:** every bookable pick pauses. `offers` renders preferred + secondaries → gate emits `escalation` (approval overlay with the numbered selectable set) → user answers `y` / `n` / number → reselection rewrites the booked offer via the gate's existing `updatedInput.offerId` path → `decision(hitl-approved|declined)` → `done`.
-
-Mode switch mid-run (UX §A2d): re-present the pending decision under the new mode's rules; require one explicit confirm; never silently auto-book a pending item. Implement as: cancel the parked promise as a decline, surface a "mode changed — re-evaluating" note, and let the next gate call re-drive.
+The plan arrives before tool execution. Mode changes during an active run apply to the next search. The original design proposed re-evaluating pending decisions, but that behavior is not implemented.
 
 ## 8. Session state
 
-All UI state (mode, constraints, thread, pending decision) lives in React state / `sessionStorage` so it *behaves* persistent within one recording (UX §A9). No server-side persistence, no `localStorage` requirement, no account. Server keeps only an in-memory `Map<runId, RunState>` holding the live `query()` iterator and the parked gate resolver; entries are dropped on `done`/`error`.
+Mode, constraints, feed, and the pending UI state live in React memory. Reloading the page resets them. Theme preference uses `sessionStorage`.
 
-## 9. Mock boundary — preservation & re-verification
+The server tracks pending and active runs in memory. It removes active entries when the stream closes or the query finishes. There is no database, authentication, durable recovery, or supported multi-user session isolation.
 
-The new code touches HTTP, not booking. `book_flight` still resolves to `lib/book-flight.js`, which imports nothing from `@duffel/api`. After the server is wired, re-run CLAUDE.md §14 verbatim:
+## 9. Simulated booking boundary and verification
 
-1. `grep -rn "orders\.\|orders\.create\|/air/orders\|createOrder" src/` → only hit is the forbidden-pattern list in `book-flight.test.ts`.
-2. `grep -n "from '@duffel/api'" src/lib/book-flight.ts` → nothing.
-3. `npm test` → book-flight static self-scan + behavioral tests pass; oversight routing 29/29 unchanged.
-4. Confirm the only Duffel method invoked anywhere is `duffel.offerRequests.create` (search). The new server adds **no** Duffel client usage of its own — it calls `searchFlights()` from `lib/`.
+The HTTP layer uses the existing simulated booking module. It adds no direct Duffel client import.
 
-Add one server-level assertion to the checklist: grep the new `src/server/**` for any `@duffel/api` import or `.orders` reference → must be none. Booking flows through `lib/book-flight.js` only.
+Run `npm test` to check classification, simulated results, offer expiry, and oversight routing. The booking suite also scans the booking module for Duffel imports and order-call patterns.
 
-## 10. Proposed file layout (additive; nothing existing is edited)
+Use `rg` to inspect `src/server/` for unexpected `@duffel/api` imports or order calls. Confirm that the application uses `duffel.offerRequests.create` for search. These checks cover current code and recognized patterns.
 
-```
-src/
-  lib/                         UNCHANGED (read-only this phase)
-  phase3-two-modes.ts          UNCHANGED (CLI stays as a fallback demo path)
-  server/
-    index.ts                   Express app: static serve + /api routes
-    run-orchestrator.ts        wraps query(); wires the web AnswerProvider; emits SSE
-    web-answer-provider.ts     the 3rd AnswerProvider (SSE out, /api/decision in)
-    sse.ts                     tiny SSE helper (event framing, per-run channel)
-web/                           Vite + React + Tailwind + shadcn SPA
-  src/
-    App.tsx                    one page, no router
-    components/                chat, result cards, settings, escalation, confirmation
-    lib/theme.ts               tokens from prompts/design-system-prompt.md (shadcn CSS vars)
-package.json                   + react, vite, tailwind, express, shadcn deps + scripts
+## 10. File layout
+
+```text
+src/lib/                        Shared search, gate, booking, and tests
+src/phase3-two-modes.ts          Terminal entry point
+src/server/index.ts             Express routes and static serving
+src/server/run-orchestrator.ts  Query loop, tools, and event payloads
+src/server/web-answer-provider.ts  Pending browser answers
+src/server/sse.ts                Event framing and heartbeat
+src/server/types.ts              HTTP and event types
+web/src/                        React UI, state, and API client
 ```
 
-New npm scripts (indicative): `dev:server`, `dev:web`, `dev` (both), `build:web`, `phase4` (serve built SPA + API).
+The root scripts are `dev:server`, `dev:web`, `dev`, `build:web`, and `phase4`. Browser dependencies live in `web/package.json`.
 
-## 11. Risks & open questions
+## 11. Risks and open questions
 
-| Risk / question | Handling |
+| Risk | Handling or limit |
 |---|---|
-| Live model + live Duffel = non-deterministic fares per take | Tune the demo prompt's budget to reliably land a `tolerance` option (Phase 3's `--scenario=escalate` used 420 USD on AUS→JFK). Keep the `--offline` fixture path available as a fallback for a guaranteed-clean take. |
-| `canUseTool` holding open on a browser round-trip | Verified pattern: it already awaits stdin arbitrarily in Phase 3. Web provider is the same await, different transport. |
-| SSE + a long model turn (seconds of latency) | The `loop_step` stepper (UX §A5) turns dead time into visible reasoning — a feature, not a wait. Send a heartbeat comment to keep the SSE connection warm. |
-| Mode switch mid-decision | §7 rule: re-present, one explicit confirm, never silent auto-book. |
-| Scope creep into Part B (accounts, earned trust, async handoff) | Hard-blocked. Part B is documented-vision only; the build brief repeats this. |
-| shadcn in a Vite (non-Next) project | Supported — shadcn is framework-agnostic (Tailwind + CSS vars). Build brief pins the Vite setup path. |
+| Live fares vary between takes | Use actual fares in recordings. Keep terminal fixtures available |
+| Long provider latency | Show tool progress and keep SSE alive with heartbeat comments |
+| Mode changes during approval | Apply changes to the next search |
+| Prompt details exceed deterministic checks | Disclose that time windows are model-interpreted |
+| Result order differs from model recommendation | Distinguish default sorting from the requested offer |
+| Browser disconnect | No durable resume. Stream closure does not establish cancellation of the agent loop |
+| Vision features enter v1 | Keep accounts, payment, and standing rules in static concepts |
 
-## 12. Definition of done (this phase)
+## 12. Definition of done
 
-Per PRD §2 / CLAUDE.md §7: both modes run end-to-end in the browser against the live agent; the pre-action plan preview and escalation callout are visible and truthful (wired to the real gate); constraints are configurable and their effect is legible; the mock confirmation renders honestly; and the §14 mock-boundary check passes with no reachable Duffel `order` path — including in the new server code. Screen-recordable is the finish line, not feature completeness.
+Demonstrate 2 browser modes against the live agent, with configurable constraints, a pre-action plan, approval requests, and an explicit simulated confirmation. Pass the core tests and inspect the new server for real order calls.
+
+The build log records the Phase 4 browser checks. Live impact hints, close-call signals, direct setting links, and pending-decision re-evaluation remain unimplemented design intent.

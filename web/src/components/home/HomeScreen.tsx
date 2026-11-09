@@ -56,7 +56,7 @@ export function HomeScreen({
 
       <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-secondary p-3.5">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Smart defaults</div>
+          <div className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Current settings</div>
           <Button variant="outline" size="sm" onClick={onOpenSettings}>
             <SlidersHorizontal className="size-3" /> Edit
           </Button>
@@ -67,7 +67,7 @@ export function HomeScreen({
             {constraints.passengers} {constraints.passengers === 1 ? 'adult' : 'adults'}
           </div>
           <div className="flex items-center gap-2.5 text-foreground">
-            <Repeat className="size-3.5 text-muted-foreground" /> Roundtrip
+            <Repeat className="size-3.5 text-muted-foreground" /> Round trip
           </div>
           <div className="flex items-center gap-2.5 text-foreground">
             <GitCommitHorizontal className="size-3.5 text-muted-foreground" />
@@ -80,7 +80,7 @@ export function HomeScreen({
             ) : constraints.airlineHard ? (
               <>{constraints.preferredAirline} only <span className="text-muted-foreground">(filter)</span></>
             ) : (
-              <>{constraints.preferredAirline} preferred <span className="text-muted-foreground">(soft)</span></>
+              <>{constraints.preferredAirline} preferred <span className="text-muted-foreground">(preference)</span></>
             )}
           </div>
         </div>

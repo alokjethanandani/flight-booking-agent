@@ -1,25 +1,29 @@
-# README media
+# Demo media
 
-Assets referenced by the "Key UX decisions" section of the top-level [`README.md`](../../README.md). Captured in **Phase 5** (demo + writeup).
+This folder holds screenshots and recordings for the [project README](../../README.md). Capture implemented behavior and label static concepts separately.
 
-## Tier 1 — short screen recordings (`.mp4`) + poster frame (`.png`)
+## Recording plan
 
-The README uses a poster-links-to-video pattern (`[![poster](x.png)](x.mp4)`) so it renders everywhere, including GitHub, where a repo-relative `<video>` tag would not autoplay-embed. Drop both files at these names:
+Pair each MP4 with a PNG poster at the same base filename. Link the poster to the recording when adding it to the README.
 
-| File | Shows |
+```markdown
+[![Pre-action plan](pre-action-preview.png)](pre-action-preview.mp4)
+```
+
+| Files | Capture |
 |---|---|
-| `pre-action-preview.{png,mp4}` | The agent stating what it will do before it acts |
-| `default-hitl.{png,mp4}` | Session opening in HITL; the mode toggle |
-| `status-tiers.{png,mp4}` | eligible / tolerance / rejected badges + escalation styled as warning, not error |
-| `escalation-callout.{png,mp4}` | "I paused because X" with the Approve / Adjust / Alternatives action row |
+| `pre-action-preview.{png,mp4}` | The plan stating when the agent can act before a booking attempt |
+| `default-hitl.{png,mp4}` | A new session in manual review and the mode control |
+| `status-tiers.{png,mp4}` | Eligible, over-budget, and rejected offers with their status labels |
+| `escalation-callout.{png,mp4}` | An over-budget approval request, the user's answer, and the result |
 
-## Tier 2 — screenshots (`.png`)
+## Supporting screenshots
 
-| File | Shows |
+| File | Capture |
 |---|---|
-| `constraints-guardrails.png` | Constraint edit with a live impact hint |
-| `narrated-loop.png` | Searching → Ranking → Deciding step states |
-| `mock-confirmation.png` | Simulated-booking marker + cancel/undo |
-| `why-this-rank.png` | Progressive-disclosure reasoning + close-call note |
+| `constraints-guardrails.png` | Current Settings fields and the last search's tier counts |
+| `narrated-loop.png` | Search, ranking, and decision progress |
+| `mock-confirmation.png` | The simulation label and simulated cancellation control |
+| `why-this-rank.png` | Expanded classification reasons |
 
-Once a GitHub-hosted asset URL exists (drag-drop into an issue/PR), a Tier-1 entry can be swapped to a native `<video>` embed if autoplay preview is wanted.
+Live impact hints and close-call signals are not implemented. Do not present them as working features in recordings. Keep the simulation label visible whenever a booking appears.

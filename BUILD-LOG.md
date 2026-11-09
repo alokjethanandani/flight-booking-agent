@@ -337,3 +337,17 @@ Housekeeping pass, no product code touched.
 - Typecheck clean (root + web); oxlint clean (only pre-existing UI fast-refresh warnings).
 
 **Consequence worth noting:** the empty-state "Adjust rules → Search again" loop (built earlier today) now covers stops/duration/airline/cabin via Settings, but **not** budget — to change budget the user edits their prompt (then New search). That's inherent to budget being prompt-driven; the Settings note points users to the prompt for budget.
+
+## 2026-11-06: writing voice and documentation accuracy
+
+Revised the README, browser guide, media instructions, product briefs, learning roadmap, publishing drafts, narration, and displayed app copy in Alok's writing voice. Preserved earlier build-log entries as historical records.
+
+The README now includes the browser dependency install and Node requirements. It distinguishes implemented behavior from proposals such as live impact hints and close-call signals. It also states which constraints code enforces and which request details depend on model interpretation.
+
+Updated approval and confirmation copy to identify simulated booking. Replaced broad claims about safety and test coverage with the checks the implementation actually performs. Kept publication dates as draft planning records and recorded-take counts as figures to check against final footage.
+
+Verification: all 29 core tests passed using `node --import tsx` on the existing test entry points. The npm test wrapper hit a sandbox IPC restriction before executing tests. Root typecheck, browser build, browser lint, document validation, and local-link checks passed. Existing browser bundle-size and fast-refresh warnings remain.
+
+The 11 changed TypeScript files retain the same structure after abstracting text literals. Booking policy, classification, and routing are unchanged. Live provider flows and narration timing were not rerun.
+
+Preserved the existing commit scripts in `package.json` and the untracked `tools/auto-commit.mjs` file.

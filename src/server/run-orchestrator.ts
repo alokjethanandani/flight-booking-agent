@@ -93,9 +93,7 @@ const activeRuns = new Map<string, ActiveRun>();
 export class RunAlreadyActiveError extends Error {
   constructor() {
     super(
-      'A run is already in progress this session. The oversight gate keeps ' +
-        'its state in module-level variables (by design — see lib/oversight.ts), ' +
-        'so only one run may be active at a time. Wait for it to finish.',
+      'A search is already running. Finish its pending decisions and wait for it to complete before starting another.',
     );
     this.name = 'RunAlreadyActiveError';
   }
@@ -196,7 +194,7 @@ function buildEscalationPayload(
       if (e.offer.id !== active.lastRequestedOfferId) {
         options.push({
           value: String(i + 1),
-          label: `Book #${i + 1} instead — ${e.offer.airlineName} ${e.offer.priceAmount.toFixed(0)} ${e.offer.priceCurrency}`,
+          label: `Approve option #${i + 1}: ${e.offer.airlineName} ${e.offer.priceAmount.toFixed(0)} ${e.offer.priceCurrency}`,
         });
       }
     });
@@ -447,8 +445,8 @@ async function runQueryLoop(
       mode: active.mode,
       message:
         active.mode === 'automated'
-          ? "I'll auto-book the best option that meets all your rules. If nothing qualifies, I'll stop and ask."
-          : "I'll find options and rank them — you make every booking call.",
+          ? "I'll simulate booking when an option meets your configured rules. Over-budget options within tolerance need your approval."
+          : "I'll find and rank flights. Every simulated booking needs your approval.",
     } satisfies PlanPreviewPayload);
 
     const setPendingResolve = (resolve: ((answer: string) => void) | null): void => {

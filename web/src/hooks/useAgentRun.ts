@@ -251,7 +251,7 @@ export function useAgentRun() {
 
   const cancelBooking = useCallback((id: number) => {
     updateItem(id, (it) => (it.kind === 'confirmation' ? { ...it, cancelled: true } : it))
-    appendItem({ id: nextId(), kind: 'note', text: 'Booking cancelled — nothing was ever charged (simulated).' })
+    appendItem({ id: nextId(), kind: 'note', text: 'Simulated booking cancelled. No ticket or charge existed.' })
   }, [updateItem, appendItem])
 
   const changeMode = useCallback((next: Mode) => {

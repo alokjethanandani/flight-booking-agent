@@ -1,157 +1,117 @@
-# Learning Roadmap — Loop Engineering + Two-Model Build/Verify
+# Learning roadmap: build and verification loops
 
-**Owner:** Alok · **Drafted:** July 14, 2026 · **Status:** Working doc (update as you run each experiment)
+Owner: Alok Jethanandani. Drafted: July 14, 2026. Status: Planned experiments. The baseline below records the original assessment.
 
-> Goal: close the gap named in the Week 1 write-up — *I can generate features faster than I can verify them.* This roadmap gets me from hand-verifying prompted output to an automated **plan → build → verify** loop, with a **separate model** doing the verifying.
->
-> Scope note: this is about my **development workflow**, not the flight-agent product scope. It does not touch the PRD's locked product decisions or guardrails (booking stays mocked; the code-level mock boundary is exactly the kind of check the verify loop should be running every iteration).
+## Purpose
 
----
+I can generate features faster than I can verify them. I want to test whether smaller tasks, explicit checks, and a separate reviewer reduce manual verification without increasing missed defects.
 
-## 0. Where I am today (baseline)
+This roadmap concerns my development workflow. The [product brief](Mini-PRD-Flight-Booking-Agent.md) remains the source of truth for FlightGenie's scope. Booking stays simulated throughout these experiments.
 
-| Capability | Status today | Target |
+## 0. Baseline
+
+| Capability | Original assessment | Target |
 |---|---|---|
-| Intent → spec (meta-prompt → PRD) | ✅ Solid — PRD drives agent decisions | Keep; add per-story specs |
-| Feature/UI generation | ✅ Fast via prompting + v0/Lovable | Keep |
-| Automated verification of generated output | ❌ Hand-eyeballed | **Automated verify step per unit** |
-| Core trust logic (mock boundary) | ✅ 29 deterministic tests | Extend pattern to feature work |
-| Plan → build → verify loop | ❌ Manual, one big blob | **Small, looped, self-checking units** |
-| Second model as verifier | ❌ One model does everything | **Generator ≠ verifier** |
-| Git PR/commit automation | ❌ Manual | Automated commits per green loop |
+| Intent to specification | Written PRD guides the build | Add acceptance criteria per story |
+| Feature generation | Faster than manual verification | Measure generation and review time separately |
+| UI verification | Primarily manual | Automate checks where the result is measurable |
+| Core permission and booking checks | Existing deterministic tests | Keep them in every relevant verification run |
+| Build loop | Manually coordinated | Use bounded iterations with recorded results |
+| Separate verifier | Not yet calibrated | Compare its findings with my own review |
+| Commit and PR workflow | Manual in the original baseline | Review current tooling before adding automation |
 
-The two ✅ testing rows matter: I already have proof that a *narrow, well-defined* check (the mock boundary) can be automated and trusted. The roadmap is about generalizing that from one guardrail to the whole build.
+The narrow booking checks show what an explicit acceptance test can cover. They do not establish that a model can verify the whole product.
 
----
+## 1. Working hypotheses
 
-## 1. Concepts, grounded
+### 1a. Persist state outside the conversation
 
-### 1a. Loop engineering (the "Ralph Wiggum" loop)
+Each iteration should read the story, current files, prior failures, and verification results. Store that evidence in files and git so a fresh context can continue the work.
 
-Origin: technique from Geoffrey Huntley (mid-2025), since formalized by Anthropic as an official plugin. The core mechanic is deliberately dumb: **feed the agent a prompt, let it work, loop it again — and keep progress in files and git, not in the model's context window.** Each iteration starts with fresh context and reads the current state (code + notes + failing tests) off disk. Failures get piped back in, so the model is forced to confront its own mess until it converges.
+A repeated prompt alone does not establish progress. Every pass needs a bounded task, a checkable result, and a stopping rule.
 
-Why it works: it sidesteps context-window rot. Instead of one long, degrading conversation, you get many short, fresh passes over an accumulating, on-disk source of truth. Brute force plus persistence.
+### 1b. Separate generation from review
 
-Why it's dangerous without discipline: an un-bounded loop on a fuzzy task burns tokens and drifts. The loop is only as good as (a) how small the unit of work is and (b) how *decisively* each pass can be judged done. That's the whole game — see §3.
+Test a separate model as a reviewer against a written rubric. A second model can still share the generator's blind spots, so treat independence as a hypothesis.
 
-### 1b. Generator ≠ verifier (the "second opinion")
+Compare a smaller model from the same family with a model from another provider. Measure missed defects, review time, and cost before choosing a split.
 
-Pattern from current agentic practice (LLM-as-judge / generator-verifier): one model produces a candidate, a **different** model grades it against explicit criteria (a rubric), pass/fail per criterion. Two reasons it's worth the extra call:
+### 1c. Match task size to verification
 
-- **Independence** — the model grading the work isn't the one that produced it, so it's not marking its own homework. Self-review shares the generator's blind spots.
-- **Cost asymmetry** — *writing* the rubric/plan wants a strong frontier model; *grading against* a clear rubric is easy enough that a cheaper/faster model does it nearly as well. So the natural split is **strong model plans + builds, lighter/different model verifies** — which is also exactly your Task 2 ("one LLM for building vs. testing + deploying").
-
-Practical model-split options to test:
-- **Same family, different tiers:** e.g., a frontier model generates, a smaller/faster one verifies against the rubric.
-- **Cross-vendor:** generator and verifier from different providers, to maximize independence of blind spots.
-- Decide empirically (§4 metrics) — don't assume cross-vendor is worth the integration cost until the numbers say so.
-
-### 1c. What makes a *good* loop (your hypothesis, sharpened)
-
-Your framing — positive loop = small, verifiable tasks; negative loop = large, unverifiable tasks — is the right axis. Making it operational:
-
-| | Converging loop (want) | Diverging loop (avoid) |
+| Property | Suitable for a bounded loop | Requires more definition or human review |
 |---|---|---|
-| Task size | One user story / one component | "Build the booking flow" |
-| Done signal | A test / rubric returns pass/fail | "Looks right" |
-| Verifiability | Machine-checkable (tests, types, lint, boundary grep) | Needs a human to judge |
-| Failure mode | Loop exits red → you see exactly what failed | Loop runs forever or declares false victory |
-| Exit condition | Explicit: green tests **and** verifier pass | Vague / token budget runs out |
+| Scope | One component or rule | An entire booking flow |
+| Completion | Named checks and acceptance criteria | A subjective "looks right" judgment |
+| Evidence | Test output, types, lint, or a defined review rubric | An unsupported model verdict |
+| Failure handling | Record the failure and stop at the cap | Retry without a limit |
 
-**The engineering is keeping every task inside the left column.** A story that can't be given a machine-checkable done-signal isn't ready to be looped — it needs to be split or spec'd further first. That decomposition step is where your PRD-first muscle transfers directly.
+## 2. Target loop and constraints
 
----
+1. Define one story and its acceptance criteria.
+2. Write the implementation plan and review rubric.
+3. Build the change.
+4. Run deterministic checks and a separate review.
+5. Record failures and retry within the iteration cap.
+6. Prepare a commit and PR when required checks pass.
+7. Escalate repeated failures for human review.
 
-## 2. Target loop (what I'm building toward)
+The iteration cap must be explicit before a run starts. No cap has been selected yet. Keep booking checks in the verification step and log each verdict with its evidence.
 
-```
-PRD  ──►  decompose into small user stories (each independently verifiable)
-             │
-             ▼
-   ┌──────────────────────────────────────────────┐
-   │  For each story, loop until green:            │
-   │                                               │
-   │   PLAN     (generator model: strong)          │
-   │     └─ write/refresh the story spec + rubric  │
-   │   BUILD    (generator model)                  │
-   │     └─ implement; state lives in files + git  │
-   │   VERIFY   (verifier model: separate)         │
-   │     ├─ run tests / types / lint / boundary    │
-   │     └─ grade output against the rubric        │
-   │                                               │
-   │   green? ─► commit + open PR, next story      │
-   │   red?   ─► pipe failures back, loop again    │
-   │            (cap iterations; escalate to me)    │
-   └──────────────────────────────────────────────┘
-```
+## 3. Experiment plan
 
-Design constraints I care about (my oversight POV applied to my *own* toolchain):
-- **The loop must be legible.** I want to see, per iteration, what was tried and why it passed/failed — same principle as the agent's oversight trace.
-- **Bounded, not unattended.** Hard iteration cap; on repeated failure it escalates to me instead of grinding. (The negative-loop guardrail, enforced in code.)
-- **The mock boundary is a permanent verify check.** Every loop runs the existing "no real Duffel order" grep/test. The verify step is the natural home for guardrails, not just correctness.
+### Phase A: run one loop manually
 
----
+Choose one existing, small story. Write real verification commands for it and run plan, build, and verify by hand.
 
-## 3. Phased plan
+Success criteria: 1 story has defined acceptance checks, recorded results, and a human-reviewed outcome. Subjective UI quality still needs human review.
 
-Deliberately mirrors the PRD's "each phase ends in something demoable" discipline. Don't advance until the current step is real.
+### Phase B: calibrate a separate verifier
 
-### Phase A — Manual loop, one model (prove the shape)
-- Take **one** small, already-scoped story (e.g., the date-range picker component, or a single ranking tie-breaker rule).
-- Run plan → build → verify **by hand**, one model, but write the **verify step as a real command** (test + typecheck + lint) rather than eyeballing.
-- **Done when:** the story has a machine-checkable done-signal you trust, produced without you reading the diff line by line.
-- *Why first:* you can't automate a loop you haven't run manually. This also forces the "is this story verifiable?" question early.
+Compare model reviews with my own judgment on 5 to 10 stories. Record disagreements and missed defects. Those are planned sample sizes, not completed results.
 
-### Phase B — Add a separate verifier model (the second opinion)
-- Keep the loop manual, but split roles: strong model plans/builds, a **different** model grades the output against a written rubric for that story.
-- Compare the verifier's verdict to your own judgment on 5–10 stories. Where do they disagree? That calibration *is* the deliverable.
-- **Done when:** you trust the verifier enough to let a "pass" mean something — and you know its failure modes.
-- *Decision to record:* which model split (tier vs. cross-vendor) earned its keep.
+Success criteria: identify the verifier's failure modes and decide whether its findings justify the added cost.
 
-### Phase C — Automate the loop (Ralph-style)
-- Wrap plan → build → verify in an actual loop that reads/writes state to files + git, fresh context each pass, failures piped back in.
-- Start with a **hard iteration cap** and manual kickoff per story. No overnight autonomous runs yet.
-- **Done when:** one story goes red → loops → green → commits, with you only reading the final result.
-- *Guardrail:* the mock-boundary check runs every iteration; a loop that can't go green in N passes escalates, doesn't grind.
+### Phase C: automate bounded iteration
 
-### Phase D — Automate commit/PR + string stories together
-- On green, auto-commit with a message derived from the story + open a PR. (Closes your other named gap: no GitHub push/PR automation.)
-- Run a small **batch** of independent stories through the loop unattended, with the escalation guardrail live.
-- **Done when:** a demoable "I gave it 3 small stories and got 3 reviewed PRs" run — the week-1-to-week-N story for the next post.
+Use files and git for state. Feed failures into the next attempt. Keep manual kickoff and an enforced iteration cap.
 
-### Phase E — Retro + write-up
-- Measure against §4. Which loops converged, which diverged, and what predicted it?
-- Feed the answer back into how you decompose the *next* PRD. Publish (this is content beat #2).
+Success criteria: 1 story moves from a failed check to a reviewed passing result. A run that reaches the cap stops and reports its remaining failures.
 
----
+### Phase D: connect commits and PRs
 
-## 4. How I'll know it's working (metrics, not vibes)
+Review existing commit tooling before adding another mechanism. Automate only after the acceptance checks and verifier have been calibrated.
 
-| Question | Metric |
+Success criteria: a planned batch of 3 independent stories produces 3 reviewable PRs, with failures routed to me. This is a target demonstration, not a completed outcome.
+
+### Phase E: review the evidence
+
+Compare converging and failed loops. Use the findings to revise story size, review criteria, and the next experiment.
+
+## 4. Measurement plan
+
+| Question | Measure |
 |---|---|
-| Are tasks actually verifiable? | % of stories with a machine-checkable done-signal (target: ~all) |
-| Do loops converge? | Median iterations-to-green per story; % that hit the cap and escalate |
-| Is the verifier trustworthy? | Agreement rate between verifier verdict and my own review; count of false "pass" (worst failure) |
-| Is generation still the fast part? | Wall-clock: generate vs. verify time per story (the asymmetry I'm trying to fix) |
-| Is the cost split worth it? | Tokens/$ per green story: strong-plans-builds + light-verifies vs. one-model-does-all |
-| Did I actually save human time? | Diffs I read line-by-line before vs. after |
+| Are tasks defined well enough? | Share of stories with explicit acceptance checks |
+| Do iterations converge? | Median iterations to pass and share reaching the cap |
+| Does the reviewer miss defects? | False-pass count and disagreement with human review |
+| Does the workflow save time? | Generation, verification, and human review time per story |
+| Is the model split worthwhile? | Cost per reviewed passing story |
+| Does automation reduce manual work? | Number of diffs requiring line-by-line review |
 
-The single metric I care most about: **false-pass rate.** A verifier that waves through broken work is worse than no verifier, because it converts "slow but trusted" into "fast and wrong."
+False passes matter most because they can turn unverified work into an accepted result. Set the acceptable threshold before delegating more authority to the loop.
 
----
+## 5. Risks and open questions
 
-## 5. Open questions (decide as I go)
+| Decision | What I need to learn |
+|---|---|
+| Model split | Whether a different provider catches more defects than a second model from the same family |
+| Rubric authorship | Whether I need to review criteria written by the generator |
+| Reviewer scope | Whether proposing fixes weakens the separation between building and review |
+| Runtime | Whether the existing SDK is sufficient before adding another harness |
+| Visual checks | Which UI qualities support automated checks and which require human judgment |
 
-- **Model split:** same-family tiers or cross-vendor for generator vs. verifier? (Answer in Phase B with data.)
-- **Rubric authorship:** who writes the per-story rubric — me, or the planning model? If the generator writes its own rubric, does independence collapse?
-- **Verifier scope:** does the verifier only run checks, or also *propose* fixes? (Proposing fixes blurs it back toward a second generator.)
-- **Where the loop lives:** local bash loop vs. the Anthropic Ralph plugin vs. the Agent SDK's own harness. (Reuse what the project already uses before adding a tool.)
-- **UI verification:** tests cover logic; how do I give *visual* output a machine-checkable done-signal (visual regression? component-contract tests?) — this is the hard part and probably the last to automate.
+## 6. First step
 
----
+Run Phase A on one scoped story. Record the acceptance criteria, commands, results, and manual review time.
 
-## 6. First concrete step
-
-Pick one already-scoped, verifiable story and run **Phase A by hand this week** — plan → build → verify with the verify step as a real command. Everything downstream depends on proving a single unit can be trusted without me reading the diff.
-
-*Reference: the Week 1 show-and-tell (`content/LinkedIn-Week1-Show-and-Tell.md`) names the gap this roadmap closes.*
+The [Week 1 write-up](LinkedIn-Week1-Show-and-Tell.md) documents the original verification gap.

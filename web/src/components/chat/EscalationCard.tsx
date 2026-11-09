@@ -26,13 +26,13 @@ export function EscalationCard({
   const title = payload.isFreeText
     ? 'FlightGenie has a question'
     : payload.mode === 'automated'
-      ? 'I paused because this breaks your rule: budget'
-      : 'Your approval is needed before booking'
+      ? 'This option is over budget. Your approval is required.'
+      : 'Approve this simulated booking'
 
   const detail = payload.isFreeText
     ? payload.prompt
     : recommended
-      ? `${recommended.airlineName} — $${formatMoney(recommended.priceAmount, recommended.priceCurrency)}. ${recommended.budgetDetail}.`
+      ? `${recommended.airlineName}: $${formatMoney(recommended.priceAmount, recommended.priceCurrency)}. ${recommended.budgetDetail}.`
       : undefined
 
   const resolvedLabel = resolvedAnswer != null
@@ -58,7 +58,7 @@ export function EscalationCard({
 
       {!payload.isFreeText && !answered && recommendOption && declineOption && (
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => onAnswer(recommendOption.value)}>Book flight</Button>
+          <Button size="sm" onClick={() => onAnswer(recommendOption.value)}>Approve booking</Button>
           <Button size="sm" variant="ghost" onClick={() => onAnswer(declineOption.value)}>Decline</Button>
         </div>
       )}
@@ -82,7 +82,7 @@ export function EscalationCard({
                 key={offer.offerId}
                 offer={offer}
                 preferred={false}
-                selectLabel="Book"
+                selectLabel="Approve booking"
                 onSelect={!answered && opt ? () => onAnswer(opt.value) : undefined}
               />
             )
@@ -96,7 +96,7 @@ export function EscalationCard({
           onClick={() => setShowPrompt((v) => !v)}
           className="flex items-center gap-1 self-start text-xs text-muted-foreground"
         >
-          View exact message
+          View approval details
           {showPrompt ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
         </button>
       )}

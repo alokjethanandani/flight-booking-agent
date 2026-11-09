@@ -10,7 +10,7 @@ export function PlanPreviewCard({ mode, message }: { mode: Mode; message: string
         <div className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Before I act</div>
         <Badge variant="secondary" className="gap-1 text-[10px]">
           <Icon className="size-2.5" />
-          {mode === 'automated' ? 'Autobook for exact match' : 'Manual review'}
+          {mode === 'automated' ? 'Automatic booking' : 'Manual review'}
         </Badge>
       </div>
       <div className="flex items-start gap-2.5">

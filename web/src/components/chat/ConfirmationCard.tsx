@@ -26,7 +26,7 @@ export function ConfirmationCard({
     return (
       <div className="flex items-start gap-2.5 rounded-xl border border-border bg-secondary p-3.5 text-sm text-foreground">
         <ClockAlert className="mt-0.5 size-4 flex-shrink-0 text-muted-foreground" />
-        <div>That fare expired while we talked — FlightGenie will re-search for a fresh price rather than book a stale one.</div>
+        <div>This fare expired before booking. A new search is required.</div>
       </div>
     )
   }
@@ -46,13 +46,13 @@ export function ConfirmationCard({
           <Check className="size-6" />
         </div>
         <div className="text-lg font-bold text-foreground">
-          {cancelled ? 'Booking cancelled' : 'Booking confirmed'}
+          {cancelled ? 'Simulated booking cancelled' : 'Simulated booking confirmed'}
         </div>
-        <Badge variant={cancelled ? 'secondary' : 'success'}>{cancelled ? 'Cancelled' : 'Confirmed · Simulated'}</Badge>
+        <Badge variant={cancelled ? 'secondary' : 'success'}>{cancelled ? 'Cancelled · Simulated' : 'Confirmed · Simulated'}</Badge>
       </div>
 
       <div className="flex w-full flex-col items-center gap-1 rounded-lg border border-border bg-background p-3.5">
-        <div className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Confirmation number</div>
+        <div className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Simulated reference</div>
         <div className="font-mono text-xl font-bold tracking-wide text-foreground">{result.bookingReference}</div>
       </div>
 
@@ -70,20 +70,20 @@ export function ConfirmationCard({
           {inbound && <DetailRow label="Return" value={legLabel(inbound)} />}
           <DetailRow label="Stops" value={formatStops(worstStops)} />
           <DetailRow label="Passengers" value={result.passengerCount} />
-          <DetailRow label="PNR" value={<span className="font-mono">{result.pnr}</span>} />
+          <DetailRow label="Simulated PNR" value={<span className="font-mono">{result.pnr}</span>} />
         </div>
       </div>
 
       <div className="flex w-full items-start gap-2.5 rounded-lg border border-border bg-secondary p-3">
         <Info className="mt-0.5 size-4 flex-shrink-0 text-muted-foreground" />
         <div className="text-left text-xs leading-normal text-muted-foreground">
-          <b className="text-foreground">Simulated booking.</b> No ticket was issued and no card was charged — this is a proof-of-concept demo.
+          <b className="text-foreground">Simulated booking.</b> No ticket was issued and no card was charged.
         </div>
       </div>
 
       {!cancelled && (
         <Button variant="outline" className="w-full border-destructive text-destructive" onClick={onCancel}>
-          Cancel booking
+          Cancel simulated booking
         </Button>
       )}
     </div>

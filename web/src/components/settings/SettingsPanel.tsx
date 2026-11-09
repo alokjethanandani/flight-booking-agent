@@ -80,21 +80,21 @@ export function SettingsPanel({
           <SheetTitle className="flex items-center gap-2">
             <ShieldCheck className="size-4" /> Your guardrails
           </SheetTitle>
-          <SheetDescription>Mode and constraints — the rules FlightGenie books within.</SheetDescription>
+          <SheetDescription>Set the rules for search and simulated booking.</SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-5 px-4 pb-4">
           {modeAppliesNextRun && (
             <div className="rounded-md bg-secondary px-3 py-2 text-xs text-muted-foreground">
-              A search is already running under the previous mode — this change applies to your next search.
+              The current search keeps its original mode. This change applies to your next search.
             </div>
           )}
 
           <div role="radiogroup" aria-label="Agent mode" className="flex flex-col gap-2.5">
             {(
               [
-                { value: 'hitl' as const, icon: UserCheck, label: 'Manual review', desc: "I'll show you a preferred pick and secondary options — you choose, I book. Nothing books without your tap." },
-                { value: 'automated' as const, icon: Zap, label: 'Autobook for exact match', desc: "I'll book the best option automatically if it meets every constraint. If it doesn't, I'll pause and ask you." },
+                { value: 'hitl' as const, icon: UserCheck, label: 'Manual review', desc: "I'll recommend a flight and show alternatives. Every simulated booking needs your approval." },
+                { value: 'automated' as const, icon: Zap, label: 'Automatic booking', desc: "I'll simulate booking when an option meets your configured rules. Over-budget options within tolerance need your approval." },
               ]
             ).map((m) => {
               const selected = mode === m.value
@@ -130,10 +130,10 @@ export function SettingsPanel({
           </div>
 
           <div className="rounded-lg border border-border bg-secondary/50 p-3 text-xs leading-normal text-muted-foreground">
-            Set your budget right in your search — e.g. <span className="font-medium text-foreground">"under $600"</span>. FlightGenie reads it from there, so it always matches what you asked for.
+            Include a USD budget in your request, such as <span className="font-medium text-foreground">"under $600"</span>. A recognized amount sets the price cap. Without one, there is no price cap.
             {lastOffers && (
               <div className="mt-1.5 border-t border-border pt-1.5">
-                Last search: {lastOffers.eligible.length} eligible · {lastOffers.tolerance.length} within tolerance · {lastOffers.rejected.length} rejected — recalculated on your next search.
+                Last search: {lastOffers.eligible.length} eligible · {lastOffers.tolerance.length} over budget · {lastOffers.rejected.length} rejected. Counts update after your next search.
               </div>
             )}
           </div>
@@ -150,7 +150,7 @@ export function SettingsPanel({
           </div>
 
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Clock className="size-3.5" /> Max total duration</div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Clock className="size-3.5" /> Max total travel time</div>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
@@ -161,7 +161,7 @@ export function SettingsPanel({
                 onChange={(e) => onConstraintsChange({ durHours: Math.max(1, Math.min(24, Number(e.target.value) || 1)) })}
                 className="h-9 w-16 text-center"
               />
-              <span className="text-sm text-muted-foreground">hours</span>
+              <span className="text-sm text-muted-foreground">hours across all flight legs</span>
             </div>
           </div>
 
@@ -194,17 +194,17 @@ export function SettingsPanel({
                     checked={constraints.airlineHard}
                     onCheckedChange={(checked) => onConstraintsChange({ airlineHard: checked })}
                   />
-                  <span>Filter out all other airline carriers</span>
+                  <span>Only use this airline</span>
                 </label>
                 <div className="text-xs text-muted-foreground">
                   {constraints.airlineHard
-                    ? `Hard requirement — only ${constraints.preferredAirline} flights will be considered.`
-                    : 'Soft preference — never eliminates an offer, only breaks ties.'}
+                    ? `Required. Only ${constraints.preferredAirline} flights are considered.`
+                    : 'Preferred. Other airlines remain in the search.'}
                 </div>
               </>
             ) : (
               <div className="text-xs text-muted-foreground">
-                No airline preference — every carrier is considered equally.
+                All airlines are considered.
               </div>
             )}
           </div>

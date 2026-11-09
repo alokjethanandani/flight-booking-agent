@@ -1,87 +1,84 @@
-# LinkedIn — Post 3 of 3 · Publish Friday, July 31, 2026
+# LinkedIn draft 3: Defining booking permission
 
-**Angle:** Design leadership / trust boundary.
-**Audience:** design hiring managers, recruiters, hiring panel (EMs + PMs). Article skews to the design-manager/PM interested in trust calibration made concrete.
-**Series:** Mon (craft) → Wed (spec discipline) → Fri (trust). This is post 3 — the closer.
-**Contents:** feed post + long-form article.
-**Status:** Ready to publish once the demo video is dropped in (see checklist).
-**Supersedes:** the earlier `content/linkedin-2026-07-27-trust-boundary.md` (this pairing moved from Mon → Fri).
+Original planned publication date: July 31, 2026. Status: Draft. Publication is not confirmed here.
 
----
+Audience: design hiring managers, recruiters, product managers, and engineering managers.
 
-## ✅ Before you publish Friday
+## Publication checklist
 
-- [ ] Publish the **article** first, then the **post** with the article link dropped into `[link to article]`.
-- [ ] Add the post `[VIDEO]` (both modes) — the payoff for the whole week's series, so lead with it.
-- [ ] Add the article `[IMAGE]` (three result cards: green / amber / red) + the escalation `[VIDEO]`.
-- [ ] Tense check: reads as "built," so the video must show it running. If the clip slips, switch the opener to present tense ("here's how I'm enforcing it").
-- [ ] If boosting one post in the series, boost this one — it's the clearest expression of the through-line.
+- [ ] Verify each claim against the current implementation.
+- [ ] Add the planned image or recording. Keep simulated booking clearly labeled.
+- [ ] Publish the article and replace `[link to article]` in the feed post.
+- [ ] Add the discussion question as the first comment.
 
----
----
+## Feed post
 
-# FEED POST
+Where should an AI agent's permission to act be enforced?
 
-I've spent 15 years designing the "are you sure?" moment in fintech. This week I stopped drawing it and enforced it in code.
+For FlightGenie, I put booking permission in a code gate that runs before the booking tool executes.
 
-I'm a product designer building an AI flight-booking agent in public. It runs two ways: **automated** (book the best option that fits every rule) and **human-in-the-loop** (present options, you decide). The whole product is one question — *when should the agent act on its own, and when should it stop and ask?*
+The agent searches live flights and checks the user's budget, stops, and duration. Automated mode can simulate booking for eligible offers. Manual review requires approval for every bookable offer.
 
-Here's the decision I'm proud of. Building the browser UI this week, the tempting move was to put that act-vs-ask logic in the screen. I refused.
+An offer up to 20% over budget can reach the user for approval if the other hard constraints pass. A rejected offer stays blocked in both modes.
 
-The boundary lives in a permission gate in the core — code that runs *before* any booking and returns allow or pause. The UI only *renders* that decision: a green "meets all your rules," an amber "slightly over budget — book anyway?", a receipt stamped *simulated*. The screen shows the boundary; it never owns it.
+The browser shows the plan before action and presents the approval request when the gate pauses. Its role is to make the permission boundary visible and carry the user's answer back.
 
-The proof it held: there's a test suite guaranteeing the agent can't reach a real booking — and the entire UI was built without touching one of those tests. If the UI had *needed* to, that would've been my alarm that the boundary had moved.
+I kept the core gate and its tests unchanged while adding the browser. The booking tests check the simulated implementation and scan it for real-order patterns.
 
-Designing for oversight isn't a screen. It's *where you put the decision.*
+Search is live. Every booking is simulated.
 
-Full write-up — the three-tier gate and the mechanism underneath 👇
 [link to article]
-
-→ In your agent work, does the "ask the human" rule live in the prompt, the UI, or the core?
 
 #AgenticAI #ProductDesign #HumanInTheLoop #DesignLeadership
 
-[VIDEO: 20–30s — browser: natural-language request → live search → automated mode auto-books an eligible option with no prompt → switch to HITL → the same pick now pauses for approval. Caption: "Same agent, two oversight modes — watch where it acts vs. stops."]
+## First comment
 
----
----
+Which agent permissions do you enforce in code, and which still depend on model instructions?
 
-# LONG-FORM ARTICLE
+## Article
 
-## I designed an agent's auto-vs-ask boundary. Then I made it impossible to bypass.
+## How I defined an agent's booking permission
 
-[IMAGE: three result cards — one green "eligible," one amber "tolerance / over budget," one greyed red "rejected." Caption: "Color is load-bearing here: it *is* the constraint status."]
+I put FlightGenie's booking permission in code before adding the browser interface. The model could recommend a flight, but a separate gate decided whether the booking tool could execute.
 
-For 15 years I've designed the moments where software hands control back to a person — exception queues, approval steps, the "are you sure?" Building my own AI agent let me stop specifying that boundary and actually enforce it. Here's the product thinking, with the mechanism underneath it.
+I chose flights because budget, stops, and duration made that decision visible. Search used live airline offers. Booking always returned a simulated confirmation.
 
-The agent takes a trip and your rules — budget, max stops, total travel time, preferred airline — runs a real flight search, and runs in two modes: **automated** (book the best option that meets every rule; escalate if the best one breaks a rule) and **human-in-the-loop** (always present a preferred pick plus backups; you choose). Booking is mocked; the point was never a booking company. The point is the boundary.
+[IMAGE: eligible, over-budget, and rejected cards. Caption: "Each tier has a different permission rule."]
 
-### Trust isn't binary, so the gate isn't either
+### 1. Give exceptions a defined path
 
-Every option lands in one of three tiers, decided by deterministic code, not the model:
+I used three tiers:
 
-- **Eligible** — in budget, every hard rule met. Auto-bookable.
-- **Tolerance** — over budget by ≤20% *with every other hard rule met*. Never auto-booked; it's the escalation candidate — the "close, but this one's your call" case.
-- **Rejected** — a hard rule broken (or >20% over). Not bookable, in either mode.
+| Tier | Check | Permission |
+|---|---|---|
+| Eligible | Configured hard constraints and budget pass | Automatic in automated mode. Approval in manual review |
+| Tolerance | Up to 20% over budget with other hard constraints met | Approval required in both modes |
+| Rejected | A required check fails or the offer exceeds tolerance | Blocked in both modes |
 
-That middle tier is the whole design. Binary pass/fail has no room for "I found something 8% over that's otherwise perfect — want it?" The tolerance band *is* the trust conversation.
+The tolerance tier kept a near-budget option available without silently expanding the price cap. Approval applied only to that defined exception. It could not override a rejected offer.
 
-### Show the boundary before it's crossed, not after
+Code enforced the numeric checks. The model interpreted the trip and explained its recommendation. Time windows mentioned in a request were outside the deterministic gate.
 
-The hero of the UI is a banner that states the agent's intent up front — automated: *"I'll auto-book the best option that meets all your rules; if nothing qualifies, I'll stop and ask."* HITL: *"I'll find and rank options — you make every booking call."* Oversight you only learn about *after* the agent acts isn't oversight. The boundary has to be legible in advance.
+Design criterion: an exception can reach a reviewer without becoming permission to bypass every rule.
 
-### Render the decision; don't reinvent it
+### 2. State permission before action
 
-Every booking decision produces a small structured record — mode, tier, outcome (allow / deny), and a plain-language `reason`. The UI shows that `reason` *verbatim* — "over your budget, so I won't book it automatically" — mapped to a color that carries meaning, not decoration: green = meets all rules, amber = escalation-worthy, red = breaks a rule. On a deliberately white, quiet UI, those are the only things that pop. The contrast *is* the legibility.
+I placed a plan before the search and booking flow. It stated whether the agent could book automatically or needed approval.
 
-### The part I care about most: policy lives in code, not the prompt
+Manual review was the default. I wanted users to inspect a recommendation before enabling automatic booking. Switching modes during a run applied to the next search.
 
-I first tried to enforce "don't book without asking" with instructions to the model. Wrong — a prompt is a suggestion it can talk itself out of. The rule now lives in a permission gate that runs *before* any booking. When I built the UI, I kept that gate and its test suite read-only: the entire interface was assembled without editing the code that decides. If it had *needed* to, that would've meant the boundary had leaked into the presentation layer — exactly the failure I was guarding against.
+The approval request used warning styling and named the budget exception. Rejected offers remained visible for inspection without a booking action.
 
-And one more piece of discipline that made the whole thing connect cleanly: the browser and the agent talk through a small, fixed set of events — *searching → ranking → deciding*, then the ranked options, then the decision, then a confirmation. Each event maps to something the agent already produced. The UI *renders* state; it never *recomputes* it. That one rule is what stops product logic from quietly migrating into the front-end where it can't be tested.
+Design criterion: users can identify the approval policy before the agent attempts to book.
 
-The thesis I'm building toward: **automation isn't all-or-nothing; it's a boundary you move outward as trust accrues** — and where you *put* that boundary (core, not prompt, not UI) is what makes it real.
+### 3. Keep the interface tied to the gate
 
-[VIDEO: automated mode hits an over-budget "tolerance" option → the agent pauses and asks instead of booking → approve → simulated confirmation. Caption: "The escalation moment — the boundary, visible and enforced."]
+The gate recorded each booking decision with its mode, tier, action, outcome, and reason. The browser showed a shorter sentence for known actions and retained the original prompt for inspection.
 
-*Week 2 of building in public — a designer learning to build the systems he used to spec.*
+During the browser build, I kept the gate and its tests unchanged. Existing checks covered routing, simulated results, expiry, and forbidden real-order patterns in the booking module.
+
+The receipt stated that no ticket was issued and no card was charged. Its cancellation control changed the displayed simulation only.
+
+Design criterion: the UI accurately describes the permission granted and the action that occurred.
+
+[VIDEO: automated mode proposes an over-budget offer, waits for approval, and returns a simulated confirmation.]

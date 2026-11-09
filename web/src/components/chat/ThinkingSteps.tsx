@@ -4,8 +4,8 @@ import type { ThinkingStep, ThinkingStepLabel } from '@/hooks/useAgentRun'
 
 const STEP_TEXT: Record<ThinkingStepLabel, string> = {
   searching: 'Searching flights',
-  ranking: 'Ranking against your rules',
-  deciding: 'Deciding',
+  ranking: 'Checking your rules',
+  deciding: 'Reviewing options',
 }
 
 export function ThinkingSteps({ steps }: { steps: ThinkingStep[] }) {

@@ -1,64 +1,70 @@
-# LinkedIn — Post 2 of 3 · Publish Wednesday, July 29, 2026
+# LinkedIn draft 2: Revising a recorded decision
 
-**Angle:** Judgment / spec discipline.
-**Audience:** design hiring managers, recruiters, hiring panel (EMs + PMs). Article skews to the EM/PM/design-manager assessing how you work.
-**Series:** Mon (craft) → Wed (spec discipline) → Fri (trust). This is post 2.
-**Contents:** feed post + long-form article.
-**Status:** Ready to publish — does not depend on the demo video (see checklist).
+Original planned publication date: July 29, 2026. Status: Draft. Publication is not confirmed here.
 
----
+Audience: design hiring managers, recruiters, product managers, and engineering managers.
 
-## ✅ Before you publish Wednesday
+## Publication checklist
 
-- [ ] Publish the **article** first, then the **post** with the article link dropped into `[link to article]`.
-- [ ] Add the `[IMAGE]` — the strongest visual is the actual decision record: the spec's locked-decisions section with the "OVERRIDDEN 2026-07-20" annotation, or the git diff of that override.
-- [ ] Tense check: this post + article are about decisions already made and how you work — safe to publish without the demo video. Good mid-week anchor if the clips slip.
+- [ ] Verify each claim against the current implementation.
+- [ ] Add the planned image or recording. Keep simulated booking clearly labeled.
+- [ ] Publish the article and replace `[link to article]` in the feed post.
+- [ ] Add the discussion question as the first comment.
 
----
----
+## Feed post
 
-# FEED POST
+I changed a recorded technical decision after checking it against the deliverable.
 
-Three weeks ago I locked a decision in my spec: *build the UI in a no-code builder.* This week I overrode it. Both were the right call — the judgment is in between.
+My original spec put FlightGenie's interface in v0/Lovable. The deliverable was a screen-recorded demo of a live agent, so I reconsidered that choice.
 
-I'm a product designer building an AI flight-booking agent in public. Phase 4 was the interface. My spec said use a no-code builder — fast, polished, doubles as a "designer who ships" signal.
+I built the UI in the repository with React and an Express bridge. That let the browser connect directly to the existing search, classification, and approval flow.
 
-Then I checked it against the *actual* goal. The deliverable isn't a hosted product. It's a 60-second demo of the agent deciding when to act vs. when to ask. For that, hosting on a builder bought me nothing — and it cost me the ability to wire the UI straight into the real agent loop (live flight search, live model, the real permission gate). So I killed my own locked decision and built it in-repo.
+I recorded the override with its rationale. The product scope stayed the same: live flight search, two approval modes, and simulated booking.
 
-What let me override cleanly: the decision was *written down*, with its rationale, committed to git. Overriding a documented decision is deliberate and leaves a trail. Overriding a vibe is just drift.
+The written decision gave me something specific to revise. I could explain which assumption had changed and which constraints still held.
 
-Locking decisions early doesn't make you rigid. It's what lets you change your mind *on purpose*.
-
-Full write-up — how I keep principled pivots from becoming scope drift 👇
 [link to article]
-
-→ How do you tell a principled pivot from scope drift on your teams?
 
 #ProductManagement #ProductDesign #BuildingInPublic #AgenticAI
 
-[IMAGE: the spec's locked-decisions section showing the "UI: build in v0/Lovable → OVERRIDDEN 2026-07-20" annotation (or the git diff of it). Caption: "The decision, and its override — both on the record."]
+## First comment
 
----
----
+What evidence would justify changing a recorded technical decision on your team?
 
-# LONG-FORM ARTICLE
+## Article
 
-## What building (not prototyping) an agent taught me about shipping something you can trust
+## How I revised a spec while preserving its constraints
 
-[IMAGE: a snippet of the build log / decision record in git. Caption: "Decisions, with rationale, committed alongside the code."]
+I changed FlightGenie's UI plan after checking it against the deliverable. The original spec selected v0/Lovable. A local React interface gave me a direct path to recording the running agent.
 
-I'm a product designer who spent years arguing for design decisions in review. Building an AI agent in public has been a crash course in a different muscle: making decisions that have to survive contact with a running system. Four things from this week's phase — adding a browser UI to the agent — that I'd bring to a team.
+I recorded the change on July 20, 2026. Live flight search, two approval modes, and simulated booking remained the scope.
 
-**1. The spec is the highest-leverage design artifact.** Before any code, I wrote a technical design doc for this phase — topology, the exact API between browser and agent, the event types, the guardrails. It reads like process overhead. It isn't: it's the context that let me (and the agent) build the right thing instead of a plausible thing. When the doc was sharp, the output was sharp.
+[IMAGE: the recorded UI decision and override. Caption: "The changed decision and its rationale stay with the project."]
 
-**2. Lock decisions early — so you can override them *on purpose*.** My spec locked "build the UI in a no-code builder." This week I overrode it: for a demo *video*, hosting bought nothing and blocked me from wiring the UI to the real agent, so I built in-repo. I could do that cleanly precisely because the original decision was written down with its rationale. Overriding a documented decision is deliberate; overriding a vibe is drift. Good teams make the first kind legible.
+### 1. Define the contract before building the interface
 
-**3. Draw a hard line around what must stay correct — and defend it mechanically.** A handful of core files were read-only for this phase: the permission gate, the ranking logic, the mock booking, and their tests. The non-negotiable guardrail is that the agent can *never* reach a real, paid booking call. So after wiring the new server, I re-ran the check literally: grep the new code for any real-order call or booking-API import — must be none — and confirm the one external call in the whole system is still *search only*. "Trust me, it's mocked" isn't a guarantee. A test that fails the build if someone wires in a real order is.
+I wrote the browser-to-agent contract before implementing the UI. It named the API routes, event payloads, human-answer interface, and core files that would remain unchanged.
 
-**4. A clean contract keeps the layers honest.** The browser and the agent talk through a small, fixed set of events — *searching → ranking → deciding*, then offers, then a decision, then a confirmation. Each event maps to something the agent already produced; the UI *renders*, it never *re-derives*. That one rule — presentation shows state, it doesn't recompute it — is what stops product logic from quietly leaking into the front-end where it can't be tested.
+That made the work reviewable. I could compare the implementation with specific responsibilities instead of accepting an interface that only looked plausible.
 
-The honest edge I'm still working on (because "look how fast I shipped" posts skip it): I can *generate* code far faster than I can *verify* it. The core trust logic is tested to the point of paranoia. The generated UI, I still check by hand. Naming that asymmetry — fast to produce, slow to trust — is the actual work of the next phase.
+Design criterion: each layer has a named responsibility and an observable output.
 
-If you lead engineering, product, or design and you've shipped agentic features: I'd genuinely like to compare notes on where you draw the "must stay correct" line, and how you keep it from eroding.
+### 2. Revise the decision against the actual goal
 
-*Week 2 of building in public.*
+The deliverable was a recorded demo. I did not need hosted-builder deployment to show the oversight flow.
+
+I moved the UI into the repository and connected it to the existing agent through Express and SSE. The override changed the implementation approach without adding accounts, payment, or other product scope.
+
+The original decision and its rationale gave me a record to revise. I could state why the new approach fit the deliverable.
+
+Design criterion: a changed decision names the changed assumption and preserves the constraints that still apply.
+
+### 3. Verify the boundary separately from the presentation
+
+I kept the core permission and simulated booking tests unchanged while adding the browser. I also inspected the new server for direct Duffel imports and real-order calls.
+
+These checks supported a specific claim: the implemented booking path remained simulated. They did not replace browser review or establish production readiness.
+
+I still checked much of the generated UI by hand. My next experiment was to define smaller tasks with explicit checks and calibrate a separate model reviewer.
+
+Design criterion: a passing core test suite does not stand in for verification of a new interface.

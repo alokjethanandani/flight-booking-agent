@@ -27,12 +27,12 @@ export function ResultsSection({
         <div className="flex items-start gap-2.5">
           <SearchX className="mt-0.5 size-4.5 flex-shrink-0 text-muted-foreground" />
           <div className="text-sm leading-normal text-foreground">
-            <b>No offers meet your rules right now.</b>{' '}
+            <b>No bookable offers found.</b>{' '}
             {offers.searchedCount > 0
-              ? `The search returned ${offers.searchedCount} option${offers.searchedCount > 1 ? 's' : ''}, but none cleared your rules.`
-              : 'The search came back empty.'}
+              ? `The search returned ${offers.searchedCount} option${offers.searchedCount > 1 ? 's' : ''}, but none passed the required checks.`
+              : 'The search returned no offers.'}
             <div className="mt-1 text-xs text-muted-foreground">
-              Applying: <span className="font-medium text-foreground">{constraintSummary}</span>. Loosen a rule, then search again.
+              Rules: <span className="font-medium text-foreground">{constraintSummary}</span>. Adjust your rules or request, then search again.
             </div>
           </div>
         </div>
@@ -53,7 +53,7 @@ export function ResultsSection({
       <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
         <Sparkles className="mt-0.5 size-3 flex-shrink-0" />
         <span>
-          Search returned {offers.searchedCount} offers. Now applying your configured constraints:{' '}
+          Search returned {offers.searchedCount} offers. Checked against:{' '}
           <span className="font-medium text-foreground">{constraintSummary}</span>.
         </span>
       </div>
@@ -65,7 +65,7 @@ export function ResultsSection({
           onClick={() => setShowAlternates((v) => !v)}
           className="flex items-center gap-1 self-start text-xs font-medium text-foreground"
         >
-          {showAlternates ? 'Hide' : `See ${alternates.length} other matching option${alternates.length > 1 ? 's' : ''}`}
+          {showAlternates ? 'Hide' : `See ${alternates.length} other option${alternates.length > 1 ? 's' : ''}`}
           {showAlternates ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
         </button>
       )}

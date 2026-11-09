@@ -1,114 +1,122 @@
-# Mini-PRD — Consumer Flight-Booking Agent
+# Product brief: FlightGenie
 
-**Learning-roadmap artifact #1** (replaces the iOS anti-snooze alarm POC) · **Owner:** Alok · **Drafted:** July 5, 2026 · **Status:** Draft — for sign-off before building
+Owner: Alok Jethanandani. Drafted: July 5, 2026. Status: Phases 0 through 4 implemented. Demo and publishing work remain in Phase 5.
 
-> Parent strategy: `Strategy-PRD-Personal-Brand-and-Job-Search.md` §7C. This brief covers one artifact.
+Parent strategy reference: `Strategy-PRD-Personal-Brand-and-Job-Search.md` §7C. That document is outside this repository.
 
----
+## 0. Overview
 
-## 0. TL;DR
+I built a flight-booking agent to test when automation should proceed and when a person should decide. It searches live Duffel offers, checks constraints in code, and simulates booking through the Claude Agent SDK.
 
-Build a working consumer flight-booking agent that comparison-shops against a user's constraints (budget, max stops, total duration, preferred airlines) and runs in two modes: **fully-automated** (find + book the best option that meets all constraints) and **human-in-the-loop** (present a preferred + secondary set for the user to book manually). Flight **search is real** (Duffel); **booking is mocked** — the agent never charges a card or issues a real ticket. Built on the **Claude Agent SDK** so you actually learn the agent loop, tool use, and HITL checkpoints.
+Automated mode can book eligible offers without approval. Human-in-the-loop mode requires approval for every bookable offer. Both modes block rejected offers. Every booking is simulated.
 
-The automation-vs-oversight toggle is the whole point: it's a live demonstration of *when an agent should act vs. ask* — your signature design problem, now something you've built, not just shipped at BILL.
+## 1. Why this project
 
-## 1. Why this artifact (dual purpose)
+I chose flights because price, stops, and duration make the permission boundary concrete. A reviewer can compare the user's rules with the agent's proposed action.
 
-- **Learning:** move from "I prototype apps" to "I build agents" — the 2026 AI-native hiring bar. You'll implement a real tool-use loop and a human-in-the-loop checkpoint, not a scripted flow.
-- **Positioning:** the mode toggle *is* your POV made tangible — trust calibration, control surfaces, intervention points ("designing for human oversight, not execution," parent §3 pillar 2). One artifact that pays three ways: portfolio case study, live interview demo, content.
-- **Why flights:** a constraint-heavy decision problem with legible agent reasoning ("preferred vs. secondary, and why"), and a relatable demo anyone in a loop will understand.
+The project serves three purposes: learning the agent loop, demonstrating oversight design, and creating material for a portfolio and interviews. It is independent of my work at BILL and contains no BILL IP.
 
 ## 2. Success criteria
 
-- **Learning (the real bar):** you can explain and implement an agent loop — tool definitions → model picks a tool → execute → feed result back → repeat → stop — plus a checkpoint that pauses before a consequential action. A running agent exists.
-- **Artifact:** a screen-recordable demo where a natural-language request → agent searches real flights → ranks against constraints → **either** auto-books the best in-budget option **or** presents preferred + secondary for the user to pick, with the reasoning visible.
-- **Content/interview:** a digest ("what building an agent taught me about designing for human oversight") + a live-demo story for loops + 2–3 LinkedIn posts.
-- **Definition of done:** demoable end-to-end in *both* modes, with the oversight model legible in the UI. Not production-hardened.
+- Explain and implement the tool-use loop: define tools, let the model select one, execute it, return the result, and continue until completion.
+- Demonstrate 2 modes end to end in the browser, including automatic booking and explicit human approval.
+- Show the plan before action, classified results, approval requests, and a simulated confirmation.
+- Verify that the booking implementation makes no real order call.
+- Record the demo and prepare a written analysis plus 2 to 3 LinkedIn posts.
+
+Completion means a working, screen-recordable proof of concept. Production readiness and exhaustive error handling are outside this bar.
 
 ## 3. Scope
 
-**In scope (v1):**
-- Natural-language intake of a trip request + constraints: origin, destination, dates, budget, max stops, max total duration, preferred airline(s), passenger count, cabin class. One-way and round-trip only.
-- Real flight search via Duffel → normalized offers.
-- Constraint filtering + ranking into a **preferred** pick and **secondary** options.
-- Two modes: **automated** (auto-select + mock-book if the best option meets all constraints; otherwise escalate to the user) and **HITL** (always present options, user picks, mock-book).
-- A settings surface for mode + constraints.
-- A thin UI (chat + result cards + settings) — enough to demo.
-- A **mock** booking confirmation (a fake PNR-style record).
+### In scope for v1
 
-**Non-goals (v1):**
-- Real payment, real ticketing, real PNRs — never.
-- Hotels, cars, multi-city itineraries, loyalty/points, seat selection.
-- Accounts, production auth, scale, exhaustive error handling.
-- The B2B "policy mode" version — out of scope (not built, not tracked).
+- Natural-language route and date intake for one-way and round-trip flights.
+- A USD budget extracted from supported expressions in the trip request.
+- Settings for stops, total duration, preferred airline, passenger count, cabin, and mode.
+- Adult passengers and live Duffel search.
+- Code-based classification with a model recommendation and explanation.
+- Automated and human-in-the-loop booking permission.
+- Chat, result cards, approval requests, and a simulated receipt.
 
-## 4. Constraints & guardrails
+Airline preference is soft by default. An optional hard-airline setting removes other carriers before classification. The browser's result-card order follows the code's default sort.
 
-- **No financial or irreversible actions.** Booking is simulated: the agent stops before Duffel's paid `order` step. A live Duffel token is used for **search only** (search is effectively free; booking is where money happens, and we don't call it). `book_flight` returns a fake confirmation.
-- **Scope discipline.** This is the parent PRD's #1 risk (perpetual prep). v1 is a demo, not a product; resist adding hotels/cars/multi-city.
-- **No BILL IP** — wholly independent domain.
-- **Time budget:** fits your Mon/Tue "Learn & Build" blocks; target ~2–3 weeks part-time.
+### Non-goals for v1
+
+Real payment, real tickets, real passenger reservations, hotels, cars, multi-city trips, loyalty redemption, and seat selection are excluded. Accounts, production authentication, scale, and the B2B policy variant are also excluded.
+
+Departure and arrival time windows can appear in requests, but the deterministic gate does not enforce them. Stops and duration use Settings values.
+
+## 4. Constraints and guardrails
+
+`book_flight` always returns a simulated result. No code path may create a Duffel order, including tests and demos. The production token is used for search only.
+
+Keep the deliverable within the existing flight and oversight scope. The original planning estimate was 2 to 3 weeks part-time in Monday and Tuesday learning blocks. That estimate is a planning record, not a measured outcome.
 
 ## 5. Architecture
 
-**Runtime — Claude Agent SDK, TypeScript** (`npm install @anthropic-ai/claude-agent-sdk`, Node 18+; a Python build exists but see §10 for why TS wins here). It gives you the tool-use loop and **optional human-in-the-loop checkpoints** out of the box — which map exactly onto our two modes. Flight search uses Duffel's official TS client, `@duffel/api`.
+The agent and UI use TypeScript. The Claude Agent SDK runs the tool-use loop. Duffel's TypeScript client provides flight search. React, Vite, Tailwind, and shadcn/ui provide the browser interface.
 
-**Tools the agent is given:**
-
-| Tool | Does | Notes |
+| Tool | Responsibility | Boundary |
 |---|---|---|
-| `search_flights(params)` | Calls Duffel offer search; returns normalized offers | Real data. `params` includes passenger count and cabin class (user-configurable, added 2026-07-07 — not fixed defaults) |
-| `rank_offers(offers, constraints)` | Filters + scores by budget/stops/duration/airline; returns preferred + secondaries | Code or agent-reasoned |
-| `ask_user(question)` | The HITL escalation / choice surface | Used in HITL mode + auto-mode escalations |
-| `book_flight(offer_id)` | **Mock** — returns a fake confirmation | Never hits Duffel's paid `order` endpoint |
+| `search_flights` | Search and normalize live offers | Store complete offers outside model-generated text |
+| `rank_offers` | Apply constraints and return classified offers | Enforce budget, stops, duration, and currency checks in code |
+| `ask_user` | Request missing information | Await a terminal or browser answer |
+| `book_flight` | Return a simulated confirmation | Execute only after the permission gate allows it |
 
-**Mode routing:** the setting decides whether the loop may call `book_flight` autonomously (automated, when constraints are met) or must hit a checkpoint / `ask_user` first (HITL, and auto-mode when the best option breaks a constraint).
+The gate allows eligible offers automatically only in automated mode. Offers within the budget tolerance require approval. Rejected and unknown offers remain blocked in both modes.
 
-**UI:** thin front-end (chat + result cards + settings) reading the agent's messages, built in **v0/Lovable** — which doubles as a "designer who builds" artifact.
+The default tolerance is 20% over budget when other hard constraints pass. A person cannot override a hard rejection in v1.
 
-## 6. Learn-then-build ramp
+## 6. Learning sequence
 
-A short ramp so you're not building blind — each step is a tiny commit and itself a content beat:
-
-1. **Agent loop fundamentals** — read the Agent SDK overview; run the quickstart; understand tool-def → call → result → loop → stop.
-2. **One tool** — define a single dummy tool, watch the loop invoke it.
-3. **HITL checkpoint** — add a pause before a "consequential" tool.
-4. **Then the real tools** — Duffel search, ranking, mock booking.
+1. Run a minimal agent with one dummy tool.
+2. Observe tool selection, execution, and returned results.
+3. Add an approval checkpoint before a booking attempt.
+4. Connect live search, classification, and simulated booking.
+5. Connect the browser through the existing human-answer interface.
 
 ## 7. Phased build plan
 
-- **Phase 0 — Setup (½ day):** Duffel account + token; SDK installed; hello-world agent with one dummy tool.
-- **Phase 1 — Real search (2–3 sessions):** `search_flights` against Duffel; normalize offers; print ranked results in the terminal (no UI).
-- **Phase 2 — Constraints + ranking (1–2 sessions):** budget/stops/duration/airline filters; preferred vs. secondary logic.
-- **Phase 3 — Two modes (2 sessions):** automated (auto-pick + mock-book if in-constraint, else escalate) and HITL (present + wait). **This is the design centerpiece — make the oversight legible.**
-- **Phase 4 — Thin UI + settings, hand-built in-repo (2–3 sessions):** chat + result cards + mode/constraint settings + the oversight surfaces (pre-action plan preview, escalation callout, honest mock confirmation). Vite + React + Tailwind + shadcn frontend; a thin Express server bridges the browser to the existing Phase 3 agent loop (live Duffel + live model). *(Build target changed from v0/Lovable → in-repo on 2026-07-20; see §10.3.)* Design: `HLD-Phase4-Web-UI.md` · `prompts/Claude-Code-Prompt-Phase4.md` · `UX-Interaction-Brief-Phase4.md` · `prompts/design-system-prompt.md`.
-- **Phase 5 — Demo + content (1–2 sessions):** screen-record both modes; write the digest; cut LinkedIn posts.
+The estimates below record the original plan. Each phase ends with a runnable result.
 
-Each phase ends in something demoable. Stop when it's a clean demo — not when it's "done."
+| Phase | Deliverable | Original estimate | Status |
+|---|---|---|---|
+| 0 | SDK setup and dummy tool | Half a day | Implemented |
+| 1 | Live search and terminal results | 2 to 3 sessions | Implemented |
+| 2 | Constraints and classification | 1 to 2 sessions | Implemented |
+| 3 | Automated and human-in-the-loop modes | 2 sessions | Implemented |
+| 4 | Browser UI and settings | 2 to 3 sessions | Implemented |
+| 5 | Recordings and publishing material | 1 to 2 sessions | Drafts exist. Final recording and publication status is not tracked here |
 
-## 8. The design story to capture (interview gold)
+Phase 4 uses the [technical design](HLD-Phase4-Web-UI.md), [interaction brief](UX-Interaction-Brief-Phase4.md), and [design-system prompt](prompts/design-system-prompt.md).
 
-- **When does the agent act vs. ask?** Show how mode + constraints define the trust boundary.
-- **Control surfaces:** how the user sets guardrails (budget, airlines) so automation is safe by construction — ties to your "policy-driven / correct by construction" theme.
-- **Transparency:** how the agent shows *why* this preferred vs. secondary, so a human can trust or override.
-- **The escalation moment:** what a good "I paused because this breaks your rule X" looks like.
+## 8. Design decisions to demonstrate
+
+| Decision | What the demo should show |
+|---|---|
+| When to act or ask | The same offer follows different approval rules under each mode |
+| How constraints limit autonomy | Budget, stops, and duration determine eligibility before booking |
+| How users review an exception | An over-budget option names the exception and waits for approval |
+| How users compare choices | Classification reasons and the model's explanation remain available |
+| How simulation is disclosed | The receipt states that no ticket or charge exists |
 
 ## 9. Risks
 
-| Risk | Mitigation |
+| Risk | Response |
 |---|---|
-| Scope creep (hotels, cars, multi-city) | Timebox; v1 only; non-goals are explicit |
-| Duffel *test mode* returns one sandbox airline (unrealistic comparison) | Use **production search** for real multi-airline data; mock **only** the booking step |
-| Over-built UI steals focus | Keep it thin — the agent + oversight model is the star |
-| SDK learning curve | The §6 ramp de-risks it before the real build |
+| Scope expands into a booking product | Keep the v1 non-goals explicit |
+| Sandbox search weakens comparison | Use production search and simulated booking |
+| UI work obscures oversight behavior | Prioritize plan, approval, and confirmation surfaces |
+| Model interpretation is mistaken for code enforcement | Name which constraints the deterministic gate checks |
+| Live fares change between recordings | Record the actual result. Keep terminal fixtures available for repeatable search data |
+| Test coverage is presented as a universal guarantee | Describe the behaviors and source patterns the tests check |
 
-## 10. Decisions (locked)
+## 10. Recorded decisions
 
-1. **Language:** TypeScript, end-to-end (agent + UI). Duffel's TS client is maintained; the Python one isn't.
-2. **Data:** live Duffel token — real multi-airline search; **booking mocked** (never call the paid `order` step).
-   - **[Phase 4 demo note, 2026-07-20]** The web UI is wired to **live Duffel search + live Claude model** (not the `--offline` fixtures) for the recording. Fares vary per take, so the demo prompt is tuned to reliably land an option in the *tolerance* tier and trigger the escalation beat. Booking stays mocked regardless of wiring.
-3. **UI:** ~~build in **v0/Lovable**~~ — **[OVERRIDDEN 2026-07-20 — Alok]** Phase 4 UI is **hand-built in-repo** (Vite + React + Tailwind + shadcn/ui frontend; a thin Express server run via `tsx` bridges the browser to the existing agent loop) rather than v0/Lovable. Rationale: the deliverable is a screen-recorded demo, not a hosted product, so hosting on v0/Lovable adds nothing; building in-repo is the faster path to an honest, backend-wired demo and still serves the "designer who builds" artifact. `prompts/design-system-prompt.md` (shadcn tokens) still governs the visual system. See `HLD-Phase4-Web-UI.md`.
-4. **Trip types:** one-way + round-trip only; multi-city out of scope.
-5. **B2B "policy mode":** out of scope — not built, not tracked.
+1. Language: TypeScript for the agent and browser. This matches the selected SDK and Duffel client.
+2. Data: production Duffel search with simulated booking. Phase 4 uses live search and a live model by default.
+3. UI: build in the repository with Vite, React, Tailwind, shadcn/ui, and an Express bridge. This supersedes the original v0/Lovable plan.
+4. Trip types: one-way and round-trip only.
+5. B2B policy mode: excluded from v1.
 
-All resolved — ready to start Phase 0 (setup). Phase 0 needs credentials that are yours to create: a **Duffel account + API token** and an **Anthropic API key** for the agent.
+The UI decision changed on July 20, 2026, with Alok's approval. The deliverable was a recorded demo, so local integration with the running agent took priority over hosted-builder deployment. The build log preserves that history.
