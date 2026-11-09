@@ -101,13 +101,6 @@ Code sorts each tier by price, duration, and airline preference. The model can r
 The gate applies the selected mode and waits for approval when required. It records the tier, action, outcome, and reason in a structured decision log. Unknown offer IDs are denied.
 
 ### Demo video
-
-| [Autobook demo](https://youtu.be/_xD-YL0fAsE)                                                                                                                                     |
-| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| [![Watch the autobook demo](https://img.youtube.com/vi/_xD-YL0fAsE/hqdefault.jpg)](https://youtu.be/_xD-YL0fAsE) | [![Watch the human-in-the-loop demo](https://img.youtube.com/vi/ewoBK6E12t0/hqdefault.jpg)](https://youtu.be/ewoBK6E12t0) |
-
-
-[Permission check before booking](https://img.youtube.com/vi/yqJsbcp2f6o/hqdefault.jpg)](https://youtu.be/yqJsbcp2f6o)
 [[Permission check before booking](https://img.youtube.com/vi/yqJsbcp2f6o/hqdefault.jpg)](https://youtu.be/yqJsbcp2f6o)
 
 ### 3. Return a simulated confirmation
