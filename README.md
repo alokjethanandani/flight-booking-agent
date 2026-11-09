@@ -100,6 +100,8 @@ Code sorts each tier by price, duration, and airline preference. The model can r
 
 The gate applies the selected mode and waits for approval when required. It records the tier, action, outcome, and reason in a structured decision log. Unknown offer IDs are denied.
 
+[![Watch the permission check before booking](https://img.youtube.com/vi/yqJsbcp2f6o/hqdefault.jpg)](https://youtu.be/yqJsbcp2f6o)
+
 ### 3. Return a simulated confirmation
 
 [`book-flight.ts`](src/lib/book-flight.ts) checks offer expiry and returns a fabricated booking record. It imports no Duffel client and makes no order request.
